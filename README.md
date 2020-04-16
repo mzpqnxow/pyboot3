@@ -4,7 +4,7 @@ Use for developing and deploying Python3 projects on systems without relying on 
 
 ### Using
 
-Use `make python3`
+Use `make python3`. There is no longer support for `python2`
 
 ### Versioning / Developing / Publishing / Releasing
 
@@ -27,6 +27,11 @@ Settings for your development and deployment dependencies are in `venv/`
 ### Other Settings
 
 * etc/pip.ini (standard pip configuration file, will be used for your virtual environment, add things like proxy settings, repositories, etc. here)
+
+
+### Tested Platforms
+
+Tested on Linux x86_64, Linux ppc64le and MacOS. MacOS may require small changes in the `Makefile` for the lack of `realpath` on the OS
 
 ### Credits
 
