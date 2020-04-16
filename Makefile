@@ -161,9 +161,13 @@ $(VENV_DIR):
 	echo 'WARN: VENV_DIR is missing, making directory\nWARN'; \
 	mkdir -p $(VENV_DIR)
 
+# If you have pandoc and supporting packages, make a nice PDF of your documentation
 doc:
-	pandoc  README.md -o README.pdf "-fmarkdown-implicit_figures -o" --from=markdown -V geometry:margin=.4in --toc --highlight-style=espresso
-	pandoc  QUICKSTART.md -o QUICKSTART.pdf -fmarkdown-implicit_figures --from=markdown -V geometry:margin=.4in --toc --highlight-style=espresso
+	pandoc  $(DOC_MD) -o $(DOC_PDF) "-fmarkdown-implicit_figures -o" \
+    --from=markdown \
+    -V geometry:margin=.4in \
+    --toc \
+    --highlight-style=espresso
 
 #
 # This target is meant for use with versioneer only!!
