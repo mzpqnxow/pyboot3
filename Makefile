@@ -263,13 +263,13 @@ new:
          cp -a $(VENV_DIR)/requirements*.txt $$REPO_VENV && \
          cp -a $(VENV_DIR)/constraints.txt $$REPO_VENV && \
          cp -a $(NEW_INSTALL_FILES) $$REPO_BASENAME && \
-         mv $$REPO_BASENAME ../ ; x=$$PWD; cd ../$$REPO_BASENAME; \
+         mv $$REPO_BASENAME ../ ; bootroot=$$PWD; cd ../$$REPO_BASENAME; \
          git add . && git add -f packages && \
          $$EDITOR .git/config && \
          git commit -m "Installing pyboot environment" . && \
          git push && \
          git tag $(NEW_REPO_VERSION_TAG) && git push --tags && \
-         cd $$x ; \
+         cd bootroot ; \
          echo ; \
          echo "pyboot: Completed, project $$REPO_BASENAME now has pyboot skeleton checked in !!" \
          echo ; \
