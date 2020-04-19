@@ -89,3 +89,37 @@ setup(
     url=URL,
     version=versioneer.get_version(),
     zip_safe=False)
+
+
+#
+# The above is a very barebones versioneer capable setuptools installer
+#
+# Here is an example for using
+# setuptools.setup() with a more exotic dependency
+#
+# setuptools.setup(
+#     ...
+#     required=['jq @ git+https://github.com/mzpqnxow/jq.py@setuptools-build#egg=jq']
+#     ...)
+#
+# Users have a way to force this behavior when installing as well by using constraints.txt
+#
+# If the above was written as:
+#
+# setuptools.setup(
+#     ...
+#     required=['jq']
+#     ...)
+#
+# ... then a constraints.txt file could be used as follows to force the jq package to use
+# the fork and specific branch with a line like this in the constraints file:
+#
+# ...
+# git+https://github.com/mzpqnxow/jq.py@setuptools-build#egg=jq
+# ...
+#
+# When pip goes to get the jq package, it consults the constraints before going
+# to any indexes that may be defined (e.g. PyPi) and honors this constraint. This
+# gives an end-user some control over packages that they don't maintain when there
+# are broken or "not-quite right" dependencies
+#
