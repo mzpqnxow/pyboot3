@@ -27,6 +27,9 @@
 #
 # - AG, 2018
 #
+DEPENDENCIES := date make dirname which uname git rm mv python3 realpath
+EPOCH := $(shell date +%s)
+USER_PYPIRC_FILE := ~/.pypirc
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 PYTHON3 = $(shell which python3)
 DOC_MD = README.md
@@ -41,6 +44,7 @@ PACKAGES := packages
 PACKAGES_BIN := $(PACKAGES)/bin
 CHECKMAKE_INI_TMP := checkmake.ini
 CHECKMAKE_INI := .$(CHECKMAKE_INI_TMP)
+PACKAGES_FULL_PATH := $(ROOT_DIR)/$(PACKAGES)
 # SHELL := /bin/bash
 
 PYPIRC := $(ROOT_DIR)/.pypirc.template
@@ -59,6 +63,7 @@ CONSTRAINTS_TXT := $(ROOT_DIR)/venv/constraints.txt
 
 NEW_INSTALL_FILES = .gitignore .isort.cfg .pypirc.template .style.yapf
 NEW_INSTALL_FILES += setup.py setup.cfg
+
 
 # If requirements.txt gets hosed, build a new, sane one
 define REQUIREMENTS_TXT_CONTENT
@@ -95,8 +100,9 @@ define PYPIRC_MESSAGE
 -------- Credentialed PyPirc Installation --------
 
 Follow the prompts to install a ~/.pypirc file that allows you to publish to an Artifactory PyPi
+
 WARN: This is a global configuration file for your username
-NOTICE: Any existing ~/.pypirc will be backed up in ~/.pypirc.bak.*
+WARN: Any existing ~/.pypirc will be backed up in ~/.pypirc.bak.<timestamp>
 -------- PyPirc Crdentials --------
 
 Please enter your credentials and a PyPirc file will be created
@@ -195,9 +201,7 @@ endef
 export PROJECT_HELP_MSG
 
 K := $(foreach exec,$(DEPENDENCIES),\
-        $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
-
-export PROJECT_HELP_MSG
+        $(if $(shell which $(exec)),some string,$(error "Required app $(exec) not in PATH!")))
 
 all:
 	echo "$$PROJECT_HELP_MSG"
@@ -254,19 +258,23 @@ doc: $(DOC_MD)
 # you set up your pypirc (use `make pypirc` to produce a template)
 #
 release:
-	git push
-	$(eval v := $(shell git describe --tags --abbrev=0 | sed -Ee 's/^v|-.*//'))
-ifeq ($(bump), major)
-	$(eval f := 1)
-else ifeq ($(bump), minor)
-	$(eval f := 2)
-else
-	$(eval f := 3)
-endif
-	git tag -a `echo $(v) | awk -F. -v OFS=. -v f=$(f) '{ $$f++ } 1'`
+# 	git push
+# 	$(eval v := $(shell git describe --tags --abbrev=0 | sed -Ee 's/^v|-.*//'))
+# ifeq ($(bump), major)
+# 	$(eval f := 1)
+# else ifeq ($(bump), minor)
+# 	$(eval f := 2)
+# else
+# 	$(eval f := 3)
+# endif
+# 	git tag -a `echo $(v) | awk -F. -v OFS=. -v f=$(f) '{ $$f++ } 1'`
+ifdef PUBLISH
 	# python setup.py sdist || (rm -rf dist/ ;  echo Failed to build sdist ; /bin/false)
 	# $(TWINE) upload -r local dist/* --verbose || rm -rf $(BUILD_FILES)
+	echo wow, actually publishing? wow....
+	read dddd
 	rm -rf $(BUILD_FILES)
+endif
 	git commit -am "Bumped to version `echo $(v) | awk -F. -v OFS=. -v f=$(f) '{ $$f++ } 1'`" || /bin/true
 	git push --tags
 
@@ -282,28 +290,51 @@ endif
 
 push: publish
 
-freeze:
-	$(PYBUILD) --freeze $(VENV_DIR) && \
-		echo && \
-		echo && \
-		echo You probably want to git add $$(realpath $$(ls -lr $(VENV_DIR)/frozen-requirements-* | tail -1 | awk '{print $$9}'))
-		echo
+lol: .FORCE
+	echo $(AAA)
 
-pypirc:
+
+freeze:
+	$(PYBUILD) --freeze $(VENV_DIR)
+	echo
+	echo
+	latest_version=$$(realpath $$(ls -lr $(VENV_DIR)/frozen-requirements-* | tail -1 | awk '{print $$9}'))
+	echo You probably want to git add $$latest_version
+	echo
+
+pypirc_backup:
+ifneq ("$(wildcard ~/.pypirc)", "")
+PYPIRC_BACKUP_FILE := "$(shell echo $(USER_PYPIRC_FILE).bak.$(EPOCH))"
+endif
+
+pypirc: pypirc_backup
+	saved_umask=$(shell umask)
+	umask 177
 	echo "$$PYPIRC_MESSAGE"
-	if [ -e "~/.pypirc" ]; then cp -f ~/.pypirc ~/.pypirc.bak.$(date +%s) 2>/dev/null || /bin/true; fi 
-	echo -n 'Please enter username: ' && \
-	read user && \
-	echo -n 'Please enter password (will not be printed to screen): ' && \
-	stty -echo && \
-	read pass && \
-	stty echo && \
+ifdef PYPIRC_BACKUP_FILE
+	echo "WARN: You already have a $(USER_PYPIRC_FILE) file present!"
+	echo -n "WARN: Press enter and it will be backed up and replaced, control-c to abort.. "
+	read decision
+	echo "Backing up existing $(USER_PYPIRC_FILE) to "$(PYPIRC_BACKUP_FILE)
+	mv $(USER_PYPIRC_FILE) $(PYPIRC_BACKUP_FILE) && rm -f $(USER_PYPIRC_FILE)
+endif
+	echo "Configuring new $(USER_PYPIRC_FILE):"
+	echo "--------------------------"
+	echo -n 'Please enter username: '
+	read user
+	echo -n 'Please enter password (will not be printed to screen): '
+	stty -echo
+	read pass
+	stty echo
+	echo
 	sed \
-          -e "s/%%USER%%/$$user/" \
-          -e "s/%%PASS%%/$$pass/" \
-          $(PYPIRC) > ~/.pypirc && \
-          chmod 600 ~/.pypirc && \
-          echo "Installation complete, `make publish` should now work for you" 
+    -e "s/%%USER%%/$$user/" \
+    -e "s/%%PASS%%/$$pass/" \
+    $(PYPIRC) > $(USER_PYPIRC_FILE)
+	umask $$saved_umask	
+	echo "Installation complete. Please inspect $(USER_PYPIRC_FILE) and modify"
+	echo "any necessary settings. Once complete, you may use 'make publish' to"
+	echo "publish packages to a PyPi repository using 'twine'"
 
 dep:
 ifneq ("$(wildcard /etc/debian_version)", "")
@@ -324,58 +355,62 @@ else:
 endif
 	exit
 
-#
-# NOTE(AG): It would be smarter to use something like rsync, or to tell
-#           the cp command to not overwrite automatically. But you really
-#           shouldn't run this on a repository that isn't freshly created anyway
-new:
-	set -e; \
-       	cd $(ROOT_DIR) && \
-         export REPO_STRIPPED=$$(echo $(REPO) | sed -e 's|\.git||') && \
-         export REPO_BASENAME=$$(basename $$REPO_STRIPPED) && \
-         git clone $$REPO_STRIPPED && \
-         pwd && \
-         cp -r $(PROJECT_FILES) $$REPO_BASENAME/ && \
-         export REPO_VENV=$$REPO_BASENAME/$(VENV_DIR) && \
-         mkdir -p $$REPO_VENV && \
-         cp -a $(VENV_DIR)/requirements*.txt $$REPO_VENV && \
-         cp -a $(VENV_DIR)/constraints.txt $$REPO_VENV && \
-         cp -a $(NEW_INSTALL_FILES) $$REPO_BASENAME && \
-         mv $$REPO_BASENAME ../ ; bootroot=$$PWD; cd ../$$REPO_BASENAME; \
-         git add . && git add -f packages && \
-         $$EDITOR .git/config && \
-         git commit -m "Installing pyboot environment" . && \
-         git push && \
-         git tag $(NEW_REPO_VERSION_TAG) && git push --tags && \
-         cd bootroot ; \
-         echo ; \
-         echo "pyboot: Completed, project $$REPO_BASENAME now has pyboot skeleton checked in !!" \
-         echo ""; \
-         echo "Use to following to work on your new project:" && \
-         echo ; \
-         echo "    $ cd ../$$REPO_BASENAME" && \
-         echo "    $ git log" && \
-         echo
+# Really ought to do this much more cleverly. Using rsync would be smarter
+# Doing things safer, like using `cp -i` is probably a good idea too, but
+# it is documented that this should be done on *empty* repositories, so there
+# is some fair warning ..
+new: clean
+	cd $(ROOT_DIR)
+	REPO_STRIPPED=$$(echo $(REPO) | sed -e 's|\.git||')
+	REPO_BASENAME=$$(basename $$REPO_STRIPPED)
+	git clone $$REPO_STRIPPED
+	pwd
+	cp -r $(PROJECT_FILES) $$REPO_BASENAME/
+	REPO_VENV=$$REPO_BASENAME/$(VENV_DIR)
+	mkdir -p $$REPO_VENV
+	cp -a $(VENV_DIR)/requirements*.txt $$REPO_VENV
+	cp -a $(VENV_DIR)/constraints.txt $$REPO_VENV
+	cp -a $(NEW_INSTALL_FILES) $$REPO_BASENAME
+	mv $$REPO_BASENAME ../
+	bootroot=$$PWD
+	cd ../$$REPO_BASENAME
+	git add .
+	git add -f packages
+	$$EDITOR .git/config
+	git commit -m "Installing pyboot environment" .
+	git push
+	git tag $(NEW_REPO_VERSION_TAG)
+	git push --tags
+	cd $$bootroot
+	echo ""
+	echo "pyboot: Completed, project $$REPO_BASENAME now has pyboot skeleton checked in !!"
+	echo ""
+	echo "Use to following to work on your new project:"
+	echo ""
+	echo "    $ cd ../$$REPO_BASENAME"
+	echo "    $ git log"
+	echo
 
 # This target is untested and not very useful. Just do it manually
 completion: .FORCE
 	pip completion --zsh >> ~/.zshrc
 	pip completion --bash >> ~/.bashrc
 
-# This should be done more cleanly in Make language, not a giant shell blob ...
+
 clean: .FORCE
-	TMPDIR=`mktemp -d` && \
-	  cp -f venv/*requirements*.txt venv/constraints.txt $$TMPDIR/ 2>/dev/null || \
+	find $(PACKAGES_FULL_PATH) -name __pycache__ -exec rm -rf {} \;
+	TMPDIR=`mktemp -d`
+	# Handle errors with || so make doesn't bail, but we still get to spit out
+	# a warning
+	cp -f venv/*requirements*.txt venv/constraints.txt $$TMPDIR/ 2>/dev/null || \
 	  ( \
 	  	echo 'WARN\nWARN: requirements.txt is missing, rebuilding with boilerplate requirements.txt\nWARN'; \
 	  	echo "$$REQUIREMENTS_TXT_CONTENT" > $(REQUIREMENTS_TXT) \
-	  ) && \
-	  cp -f venv/*requirements*.txt venv/constraints.txt $$TMPDIR/ ; \
-	  rm -rf $(VENV_DIR) && \
-      mkdir $(VENV_DIR) && \
-      mv $$TMPDIR/*requirements*.txt $$TMPDIR/constraints.txt $(VENV_DIR)/ && \
-      rm -rf $(BUILD_FILES) && \
-      rm -rf $$TMPDIR
+	  ) && cp -f venv/*requirements*.txt venv/constraints.txt $$TMPDIR/
+	  rm -rf $(VENV_DIR)
+	  mkdir $(VENV_DIR)
+	  mv $$TMPDIR/*requirements*.txt $$TMPDIR/constraints.txt $(VENV_DIR)/
+		rm -rf $(BUILD_FILES) $$TMPDIR
 
 compat:
 ifeq ($(UNAME_S), Linux)
@@ -398,4 +433,8 @@ rebuild: deploy
 
 .FORCE :
 	
-.SILENT : clean completion checkmake compat dep freeze pypirc deploy $(DOC_MD) $(REQUIREMENTS_TXT) $(VENV_DIR) $(CONSTRAINTS_TXT)
+.SILENT : clean completion checkmake compat dep freeze new pypirc deploy $(DOC_MD) $(REQUIREMENTS_TXT) $(VENV_DIR) $(CONSTRAINTS_TXT)
+
+.ONESHELL : clean new freeze pypirc
+
+.EXPORT_ALL_VARIABLES : new freeze pypirc
