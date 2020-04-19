@@ -1,37 +1,37 @@
 #
-# Universal Python deployment tool for Python2 and Python3 on Linux
+# Universal Python deployment and develpment tool Python3 on Linux
+# This relies heavily on GNU make
+#
 # Includes pip, virtualenv, setuptools as well as socks proxy support
-# This allows `make python3` to work on any UNIX, Linux or MacOS machine
+# This allows `make boot` to work on any UNIX, Linux or MacOS machine
 # regardless of whether it has any of these dependencies installed in
 # your local directory or system-wide
 #
 # MacOS works, with some tweaks (use PYTHON=/path/to/system/python)
 # Also, see the issue with the lack of a `realpath` command (seriously?)
 #
-# Supported Targets:
-#  - all: Print a usage menu
-#  - python3: Build for python3
-#  - venv: Create a missing venv/ dir, you shouldn't ever need this
-#  - clean: Clean up the virtual environment without touching your code
-#           Everything in venv/ will be deleted except requirements.txt
-#  - rebuild: Equivalent to make clean && make
-#  - publish: Publishes a package based on the contents of your ~/.pypirc
-#             file
-#  - pypirc: Dynamically/interactively creates a ~/.pypirc configured for
-#            user with Artifactory. Only needed once on any given
-#            system, not per project, since pypirc is global to the user
-#            and not respected by virtualenv
 #
 # Remember that PYTHON3 can be overridden on the command line
 # using `make PYTHON3=/opt/my/python`. The same is true of the
 # VENV_DIR but there's really no reason to change the venv dir IMO.
 #
+# TODO(AG): Consider utilizing some of the GNU special PHONY targets
+#           to reduce target size and complexity
+# Reference: https://www.gnu.org/software/make/manual/html_node/Special-Targets.html
+# The following seem likely to be useful:
+#   - .ONESHELL
+#   - .EXPORT_ALL_VARIABLES
+#   - .SILENT
+#   - .IGNORE
+#		- .DELETE_ON_ERROR
+#
 # - AG, 2018
 #
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 PYTHON3 = $(shell which python3)
-
+DOC_MD = README.md
 VENV_DIR = venv/
+UNAME_S := $(shell uname -s)
 RM_RF := /bin/rm -rf
 PYBUILD := ./pyboot
 BUILD_FILES := build dist *.egg-info
@@ -39,15 +39,21 @@ PROJECT_FILES := etc packages pyboot .gitignore Makefile
 COPY_FILES := etc packages pyboot Makefile venv
 PACKAGES := packages
 PACKAGES_BIN := $(PACKAGES)/bin
+CHECKMAKE_INI_TMP := checkmake.ini
+CHECKMAKE_INI := .$(CHECKMAKE_INI_TMP)
+# SHELL := /bin/bash
+
 PYPIRC := $(ROOT_DIR)/.pypirc.template
+# SHELL := $(basename $(echo $SHELL))
 CC = gcc  # An optional dependency, really. It depends on what packages you need
 # Note, twine is a dependency for publishing to a PyPi
 TWINE = twine
 # Tag the initial checkin when using the `new` target. This makes it
 # a step less to utilize versioneer
 NEW_REPO_VERSION_TAG = 0.0.1
-# venv/requirements.txt already, you shouldn't remove it
-DEPENDENCIES = rm git cp mv mktemp dirname realpath
+
+DEBIAN_DEPS := autoconf automake build-essential git libpython3-dev pandoc python3-dev
+REDHAT_DEPS :=
 REQUIREMENTS_TXT := $(ROOT_DIR)/venv/requirements.txt
 CONSTRAINTS_TXT := $(ROOT_DIR)/venv/constraints.txt
 
@@ -103,40 +109,87 @@ define PROJECT_HELP_MSG
 PyBuild23 - https://github.com/mzpqnxow/pyboot
 
     Automatically deploy Python Virtual Environments for production applications without any
-    system or local user dependencies (i.e. pip, virtualenv, setuptools)
+    system or local user dependencies (i.e. pip, virtualenv, setuptools, pysocks, etc)
 
-    All dependencies to bootstrap a virtualenv are included so there is no need to use get-pip.py
-    or to use your system package manager to install pip or virtualenv
+    All dependencies to bootstrap a virtualenv are included so there is no need to use
+    get-pip.py or to use your system package manager to install pip, virtualenv or any package
+    other than Python3 itself. Note you'll need some libraries and headers for certain 3rd
+    party packages that utilize native code, e.g. pandas, psycopg2, numpy, ...
 
-    For deployment, use the python3, clean and/or rebuild targets. Other less common
-    targets are documented below
+    The following summarizes the essential/most useful targets as well as the smaller
+    utility targets that most developers will not use often if at all
 
-    Command / Target | Action
+    Command / Target | Description of Target
+                     |
+    Essentials       |
     -----------------|----------------------------------------------------------
-    make python3     | Create a Python 3.x based virtual environment
+		make deploy      | Clean existing virtualenv and create new one per venv/ and etc/ settings
+    make dev         | Alias for `deploy` (can be customized, see README.md)
+    make prod        | Alias for `deploy` (can be customized, see README.md)
+    make rebuild     | Alias for `deploy`
+		make release*    | Publish a package with version autobump **only when versioneer is properly configured for your project**
+		make new**       | Install pyboot3 files into an existing (preferably empty) git project
+		=================|==========================================================
+    Nice-to-Haves    |
+    -----------------|----------------------------------------------------------
     make clean       | Clean the current virtual environment
-    make rebuild     | Clean and rebuild a 2.6 or 2.7 based virtual environment
-    make new         | Add pyboot into an existing (preferably empty) git project using REPO=protocol://project.uri
-    make pypirc      | Create a basic ~/.pypirc file from a template
-    make release     | Publish a package with version autobump **only when using versioneer and setuptools**
-    make requirements| Automatically invoked if your venv/requirements.txt file gets nuked
-    make constraints | Automatically invoked if your venv/constraints.txt file gets nuked
-    ...              | Read Makefile or documentation for more targets
+    make compat      | Same as make test
+    make completion  | Add pip table completion to ~/.zshrc and ~/.bashrc files 
+    make constraints | Automatically rebuilds constraints file in case of accidental deletion
+    make dep         | Attempt to automatically install git, libpython headers, etc. (Optional)
+    make doc         | Produce a pretty PDF from a README.md markdown file
+    make push        | Perform a simple `git push` command
+    make pypirc      | Create a basic ~/.pypirc file from a template, prompting for user/password
+    make requirements| Automatically rebuilds requirements files in case of accidental deletion
+    make test        | Best-effort check to see if your OS/distro is supported
  
-    Edit venv/requirements.txt and commit to set virtual environment dependencies
-    Edit etc/pip.ini for a custom environment (if using Artifactory or other special PyPi server)
-    Use the release target if using git and versioneer and with a configured ~/.pypirc
+    * When using make release, git version tags are assumed to be of the form x.y.z
+        x: Major
+        y: Minor
+        z: Revision
+      Bootstrap this with:
+        $ git tag 0.0.1 && git push --tags`
+      The following options are available:
+    	  - To autobump the revision and push release:
+    	    $ make release bump=major
+    	  - To autobump the minor and push release:
+			    $ make release bump=minor
+    	  - To autobump the revision and push release:
+    		  $ make release
+    	You will most commonly be bumping only the revision
 
-    --- QUICK START: SET REQUIREMENTS FOR YOUR PROJECT ---
-      $$ vim venv/requirements.txt
+    ** When using `make new`, a repo should be specified:
+      $ make new REPO=https://github.com/user/project
+      
+      There is a risk of files being overwritten if names collide, so it is recommended
+      to do this upon initial creation of a project
 
-    --- QUICK START: DEPLOYMENT ---
-      $$ make python3
-      $$ source venv/bin/activate
+    Guide to Setting Up a New Project
+    ========================
 
-    --- QUICK START: SOURCE CONTROL ---
-      $$ git add . && git commit -m 'Add pyboot base' .
-      NOTE: The .gitignore file will ensure only the required pyboot files are checked in (~15MB)
+    - Edit venv/requirements-project.txt and commit to set virtual environment dependencies
+      that are specific to your project
+    - Edit venv/requirements-base.txt and commit to add/remove non-essential but helpful
+      packages you may use during development. You will want to comment these packages out
+      when deploying to production
+    - Edit etc/pip.ini if necessary to customize settings for proxies and internal PyPi
+      repositories such as Artifactory
+    - (Optional) Use the following command to prepare tag-based versioning if you plan to use versioneer:
+        $ git tag 0.0.1 && git push --tags
+    - (Optional) Use:
+    		$ make dep
+    	This will attempt to install dependencies that are common to some 3rd party Python
+    	packages using a package manager specific to your OS. Examples include Python3 and
+    	libpython3, libyaml shared libraries and headers. Modify if you intend to use it, it
+    	is not terribly useful as is, but it provides basic logic to take different actions
+    	based on some simple OS/distribution detection
+    - Finally, you can build the virtual environment:
+    	$ make dev
+    	Note the dev, deploy, prod and rebuild targets all perform the same action. It is up
+    	to you to modify the makefile
+    - Enter the virtual environment in the standard way:
+      $ source venv/bin/activate
+    ...
 
 endef
 export PROJECT_HELP_MSG
@@ -147,28 +200,34 @@ K := $(foreach exec,$(DEPENDENCIES),\
 export PROJECT_HELP_MSG
 
 all:
-	@echo "$$PROJECT_HELP_MSG"
+	echo "$$PROJECT_HELP_MSG"
 
 requirements: $(REQUIREMENTS_TXT)
 constraints: $(CONSTRAINTS_TXT)
 
-python3: $(VENV_DIR) clean
-	@echo "Executing pyboot (`basename $(PYBUILD)` -p $(PYTHON3) $(VENV_DIR))"
+deploy: $(VENV_DIR) clean
+	echo "Executing pyboot (`basename $(PYBUILD)` -p $(PYTHON3) $(VENV_DIR))"
 	$(PYBUILD) -p $(PYTHON3) $(VENV_DIR)
 
+dev: deploy
+
 $(REQUIREMENTS_TXT): $(VENV_DIR)
-	@echo "$$REQUIREMENTS_TXT_CONTENT" > $(REQUIREMENTS_TXT)
+	echo "$$REQUIREMENTS_TXT_CONTENT" > $(REQUIREMENTS_TXT)
 
 $(CONSTRAINTS_TXT): $(VENV_DIR)
-	@echo "$$CONSTRAINTS_TXT_CONTENT" > $(CONSTRAINTS_TXT)
+	echo "$$CONSTRAINTS_TXT_CONTENT" > $(CONSTRAINTS_TXT)
 
 $(VENV_DIR):
-	@echo 'WARN'; \
+	echo 'WARN'; \
 	echo 'WARN: VENV_DIR is missing, making directory\nWARN'; \
 	mkdir -p $(VENV_DIR)
 
+$(DOC_MD):
+	echo You must have a README.md file present or pass DOC_MD=yourdoc.md to make
+	/bin/false
+
 # If you have pandoc and supporting packages, make a nice PDF of your documentation
-doc:
+doc: $(DOC_MD)
 	pandoc  $(DOC_MD) -o $(DOC_PDF) "-fmarkdown-implicit_figures -o" \
     --from=markdown \
     -V geometry:margin=.4in \
@@ -224,16 +283,16 @@ endif
 push: publish
 
 freeze:
-	@$(PYBUILD) --freeze $(VENV_DIR) && \
+	$(PYBUILD) --freeze $(VENV_DIR) && \
 		echo && \
 		echo && \
 		echo You probably want to git add $$(realpath $$(ls -lr $(VENV_DIR)/frozen-requirements-* | tail -1 | awk '{print $$9}'))
 		echo
 
 pypirc:
-	@echo "$$PYPIRC_MESSAGE"
-	@if [ -e "~/.pypirc" ]; then cp -f ~/.pypirc ~/.pypirc.bak.$(date +%s) 2>/dev/null || /bin/true; fi 
-	@echo -n 'Please enter username: ' && \
+	echo "$$PYPIRC_MESSAGE"
+	if [ -e "~/.pypirc" ]; then cp -f ~/.pypirc ~/.pypirc.bak.$(date +%s) 2>/dev/null || /bin/true; fi 
+	echo -n 'Please enter username: ' && \
 	read user && \
 	echo -n 'Please enter password (will not be printed to screen): ' && \
 	stty -echo && \
@@ -245,6 +304,25 @@ pypirc:
           $(PYPIRC) > ~/.pypirc && \
           chmod 600 ~/.pypirc && \
           echo "Installation complete, `make publish` should now work for you" 
+
+dep:
+ifneq ("$(wildcard /etc/debian_version)", "")
+	echo "Debian derivative, using apt to install the following packages:"
+	echo "$(DEBIAN_DEPS)"
+	sudo apt-get install $(DEBIAN_DEPS)
+else ifneq ("$(wildcard /etc/redhat-release)", "")
+	echo "Red Hat derivative, using yum to install the following packages:"
+	echo "$(REDHAT_DEPS)"
+	sudo yum install $(REDHAT_DEPS)
+else ifeq ($(UNAME), Darwin)
+	echo "Not familiar with dependency installation process for $(UNAME_S)""
+	echo "You probably will need to use brew or some other 3rd party package manager"
+else:
+	echo "The OS $(UNAME_S) is not known"
+	echo "If you have success, please enter a PR with any required changes"
+	echo "If you are unable to succeed, please enter an Issue with details"
+endif
+	exit
 
 #
 # NOTE(AG): It would be smarter to use something like rsync, or to tell
@@ -272,16 +350,21 @@ new:
          cd bootroot ; \
          echo ; \
          echo "pyboot: Completed, project $$REPO_BASENAME now has pyboot skeleton checked in !!" \
-         echo ; \
+         echo ""; \
          echo "Use to following to work on your new project:" && \
          echo ; \
          echo "    $ cd ../$$REPO_BASENAME" && \
          echo "    $ git log" && \
          echo
 
+# This target is untested and not very useful. Just do it manually
+completion: .FORCE
+	pip completion --zsh >> ~/.zshrc
+	pip completion --bash >> ~/.bashrc
+
 # This should be done more cleanly in Make language, not a giant shell blob ...
 clean: .FORCE
-	@TMPDIR=`mktemp -d` && \
+	TMPDIR=`mktemp -d` && \
 	  cp -f venv/*requirements*.txt venv/constraints.txt $$TMPDIR/ 2>/dev/null || \
 	  ( \
 	  	echo 'WARN\nWARN: requirements.txt is missing, rebuilding with boilerplate requirements.txt\nWARN'; \
@@ -292,11 +375,27 @@ clean: .FORCE
       mkdir $(VENV_DIR) && \
       mv $$TMPDIR/*requirements*.txt $$TMPDIR/constraints.txt $(VENV_DIR)/ && \
       rm -rf $(BUILD_FILES) && \
-      rm -rf $$TMPDIR && ls -lrt $(VENV_DIR)
+      rm -rf $$TMPDIR
 
-rebuild: python3
+compat:
+ifeq ($(UNAME_S), Linux)
+	echo $(UNAME_S) is well-tested and supported
+else ifeq ($(UNAME_S), Darwin)
+	echo $(UNAME_S) is supported but untested, please report issues at https://github.com/mzpqnxow/pyboot3/issues
+else
+	echo $(UNAME_S) is not known to be supported, please report issues at https://github.com/mzpqnxow/pyboot3/issues
+endif
+	exit
 
-.PHONY: python3 rebuild pypirc publish freeze doc requirements constraints
+checkmake: .FORCE
+	cp $(CHECKMAKE_INI) $(CHECKMAKE_INI_TMP) && checkmake Makefile
+	rm -f $(CHECKMAKE_INI_TMP)
 
-.FORCE:
+# Rebuild works by just calling deploy because deploy performs a clean
+rebuild: deploy
+
+.PHONY: all checkmake clean compat completion constraints dep deploy dev doc freeze publish pypirc rebuild requirements test
+
+.FORCE :
 	
+.SILENT : clean completion checkmake compat dep freeze pypirc deploy $(DOC_MD) $(REQUIREMENTS_TXT) $(VENV_DIR) $(CONSTRAINTS_TXT)
