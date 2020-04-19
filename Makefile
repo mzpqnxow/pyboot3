@@ -254,6 +254,7 @@ new:
          cp $(VENV_DIR)/constraints.txt $$REPO_VENV && \
          mv $$REPO_BASENAME ../ ; x=$$PWD; cd ../$$REPO_BASENAME; \
          git add . && \
+         $$EDITOR .git/config && \
          git commit -m "Installing pyboot environment" . && \
          git push && \
          cd $$x ; \
