@@ -1,0 +1,49 @@
+#
+# Boilerplate examples/templates
+# Provided by pyboot3 / mzpqnxow
+# This file is specific to PEP518
+#  https://www.python.org/dev/peps/pep-0518
+# For the part relevant to pyproject.toml files:
+#  https://www.python.org/dev/peps/pep-0518/#file-format
+#
+
+#------------------------------------------------------ 
+# PEP518 by Example
+#------------------------------------------------------
+### PEP518 requires a pyproject.toml file to specify build-time requirements
+### for your package
+##
+## The perfect example here is when your package relies on Cython and you have
+## pyx files that must be Cythonized => .c files at build-time. You shouldn't
+## assume Cython is present on a users' system, especially if they are running
+## in virtual environments and/or containers. PEP518 allows you to do this all
+## dynamically with setuptools
+##
+## Unfortunately, the Cython case is not always so simple and requires
+## some hacking around in setuptools as well. See this for a real-world
+## example of what had to be done with setuptools to make this work in
+## the correct way. Take notice of the imports specifically, and the
+## significance of the import order
+##
+## The jq.py project is excellent, it provides bindings to libjq which is
+## native code. It includes not only a .c module but also a separate pyx
+## Cython file, which must be Cythonized and compiled along with the .c
+## file to produce the jq shared library. The developer did not waste his
+## time dealing with supporting users who need to build the package at
+## deploy-time and decided to provided a binary wheel instead, like most
+## common packages do. This doesn't help users on uncommon platforms such
+## as Linux/ppc64le. The setuptools-build branch of my fork eventually got
+## the PEP518 method to work so that build is seamless even when Cython is
+## not present on the system. Using pip install to download and build from
+## source "just works", even on ppc64le
+##
+##
+## Note the setuptools bit is much trickier than the PEP518 file (this file)
+## https://github.com/mzpqnxow/jq.py/blob/setuptools-build/pyproject.toml
+## https://github.com/mzpqnxow/jq.py/blob/setuptools-build/setup.py
+##
+##
+# [build-system]
+# requires = ["setuptools", "wheel", "cython"]
+# build-backend = "setuptools.build_meta"
+
