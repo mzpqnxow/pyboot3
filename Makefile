@@ -129,13 +129,13 @@ PyBuild23 - https://github.com/mzpqnxow/pyboot
                      |
     Essentials       |
     -----------------|----------------------------------------------------------
-		make deploy      | Clean existing virtualenv and create new one per venv/ and etc/ settings
-    make dev         | Alias for `deploy` (can be customized, see README.md)
-    make prod        | Alias for `deploy` (can be customized, see README.md)
-    make rebuild     | Alias for `deploy`
-		make release*    | Publish a package with version autobump **only when versioneer is properly configured for your project**
-		make new**       | Install pyboot3 files into an existing (preferably empty) git project
-		=================|==========================================================
+	make deploy      | Clean existing virtualenv and create new one per venv/ and etc/ settings
+	make dev         | Alias for `deploy` (can be customized, see README.md)
+	make prod        | Alias for `deploy` (can be customized, see README.md)
+	make rebuild     | Alias for `deploy`
+	make release*    | Publish a package with version autobump **only when versioneer is properly configured for your project**
+	make new**       | Install pyboot3 files into an existing (preferably empty) git project
+	=================|==========================================================
     Nice-to-Haves    |
     -----------------|----------------------------------------------------------
     make clean       | Clean the current virtual environment
@@ -214,6 +214,7 @@ deploy: $(VENV_DIR) clean
 	$(PYBUILD) -p $(PYTHON3) $(VENV_DIR)
 
 dev: deploy
+python3: deploy
 
 $(REQUIREMENTS_TXT): $(VENV_DIR)
 	echo "$$REQUIREMENTS_TXT_CONTENT" > $(REQUIREMENTS_TXT)
