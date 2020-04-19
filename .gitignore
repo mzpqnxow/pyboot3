@@ -51,4 +51,4 @@ venv/*
 !venv/constraints.txt
 !venv/requirements-base.txt
 !venv/requirements-project.txt
-!packages
+!packages/
