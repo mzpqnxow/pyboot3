@@ -28,6 +28,35 @@ Settings for your development and deployment dependencies are in `venv/`
 
 * etc/pip.ini (standard pip configuration file, will be used for your virtual environment, add things like proxy settings, repositories, etc. here)
 
+### TODO / NOTES
+
+Random stuff
+
+#### Notes From pip Documentation
+
+Yeah, there's lots of useful and not as useful things you can do. Here are a few of those.
+
+##### Bundling of Requirements for a Virtualenv Blob Requiring No Index
+
+Pack it up:
+
+```
+$ tempdir=$(mktemp -d)
+$ pip wheel -r venv/requirements.txt --wheel-dir=$tempdir
+$ cwd=`pwd`
+$ (cd "$tempdir"; tar -cjvf "$cwd/bundled.tar.bz2" *)
+```
+
+Unpack/install it:
+
+```
+$ tempdir=$(mktemp -d)
+$ (cd $tempdir; tar -xvf /path/to/bundled.tar.bz2)
+$ pip install --force-reinstall --ignore-installed --upgrade --no-index --no-deps $tempdir/*
+```
+
+Personally, I don't do this nor do I plan to
+
 
 ### Tested Platforms
 
