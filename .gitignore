@@ -45,6 +45,10 @@ target/
 .python-version
 .env
 .venv
-!venv/frozen-requirements-*,!venv/requirements.txt,!venv/constraints.txt,!venv/requirements-base.txt,!venv/requirements-project.txt
-venv/
+venv/*
+!venv/frozen-requirements-*
+!venv/requirements.txt
+!venv/constraints.txt
+!venv/requirements-base.txt
+!venv/requirements-project.txt
 ENV/

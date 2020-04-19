@@ -48,6 +48,9 @@ DEPENDENCIES = rm git cp mv mktemp dirname realpath
 REQUIREMENTS_TXT := $(ROOT_DIR)/venv/requirements.txt
 CONSTRAINTS_TXT := $(ROOT_DIR)/venv/constraints.txt
 
+NEW_INSTALL_FILES = .gitignore .isort.cfg .pypirc.template .style.yapf
+NEW_INSTALL_FILES += setup.py setup.cfg
+
 # If requirements.txt gets hosed, build a new, sane one
 define REQUIREMENTS_TXT_CONTENT
 # Many of these packages pull in other linters and static analysis tools
@@ -240,6 +243,10 @@ pypirc:
           chmod 600 ~/.pypirc && \
           echo "Installation complete, `make publish` should now work for you" 
 
+#
+# NOTE(AG): It would be smarter to use something like rsync, or to tell
+#           the cp command to not overwrite automatically. But you really
+#           shouldn't run this on a repository that isn't freshly created anyway
 new:
 	set -e; \
        	cd $(ROOT_DIR) && \
@@ -250,8 +257,9 @@ new:
          cp -r $(PROJECT_FILES) $$REPO_BASENAME/ && \
          export REPO_VENV=$$REPO_BASENAME/$(VENV_DIR) && \
          mkdir -p $$REPO_VENV && \
-         cp $(VENV_DIR)/requirements*.txt $$REPO_VENV && \
-         cp $(VENV_DIR)/constraints.txt $$REPO_VENV && \
+         cp -a $(VENV_DIR)/requirements*.txt $$REPO_VENV && \
+         cp -a $(VENV_DIR)/constraints.txt $$REPO_VENV && \
+         cp -a $(NEW_INSTALL_FILES) $$REPO_BASENAME && \
          mv $$REPO_BASENAME ../ ; x=$$PWD; cd ../$$REPO_BASENAME; \
          git add . && \
          $$EDITOR .git/config && \
