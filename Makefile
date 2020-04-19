@@ -257,42 +257,36 @@ doc: $(DOC_MD)
 # should comment out the $(TWINE) line. If you *are* publishing, make
 # you set up your pypirc (use `make pypirc` to produce a template)
 #
-release:
-# 	git push
-# 	$(eval v := $(shell git describe --tags --abbrev=0 | sed -Ee 's/^v|-.*//'))
-# ifeq ($(bump), major)
-# 	$(eval f := 1)
-# else ifeq ($(bump), minor)
-# 	$(eval f := 2)
-# else
-# 	$(eval f := 3)
-# endif
-# 	git tag -a `echo $(v) | awk -F. -v OFS=. -v f=$(f) '{ $$f++ } 1'`
-ifdef PUBLISH
-	# python setup.py sdist || (rm -rf dist/ ;  echo Failed to build sdist ; /bin/false)
-	# $(TWINE) upload -r local dist/* --verbose || rm -rf $(BUILD_FILES)
-	echo wow, actually publishing? wow....
-	read dddd
-	rm -rf $(BUILD_FILES)
+release: push
+	$(eval v := $(shell git describe --tags --abbrev=0 | sed -Ee 's/^v|-.*//'))
+ifeq ($(bump), major)
+	$(eval f := 1)
+else ifeq ($(bump), minor)
+	$(eval f := 2)
+else
+	$(eval f := 3)
 endif
-	git commit -am "Bumped to version `echo $(v) | awk -F. -v OFS=. -v f=$(f) '{ $$f++ } 1'`" || /bin/true
-	git push --tags
+	version=`echo $(v) | awk -F. -v OFS=. -v f=$(f) '{ $$f++ } 1'`
+	echo "Pushing tagged release $$version ..."
+	echo git tag -a $$version
+	echo git commit -am "Bumped to version $$version" || /bin/true
+	echo git push --tags
+	echo "Release pushed to repository"
 
-publish: $(PIP_CONF)
+push: .FORCE
+	echo "Pushing commited changed before tagging release ..."
+	echo git push
+
+publish: release $(PIP_CONF)
 ifndef VIRTUAL_ENV
 	$(error The publish target is meant only for use in an activated virtual environmnent)
 else ifeq (,$(wildcard ./setup.py))
 	$(error You must have a setup.py file in the project root if you want to publish)
 endif
-	$(PYTHON3) setup.py sdist upload -r local
-	$(TWINE) upload -r local dist/* --verbose || rm -rf $(BUILD_FILES)
-
-
-push: publish
-
-lol: .FORCE
-	echo $(AAA)
-
+	echo Building using sdist ..
+	$(PYTHON3) setup.py sdist || (rm -rf dist/; echo Failed to build sdist; /bin/false)
+	echo Publishing to PyPi using Twine ...
+	$(TWINE) upload -r local dist/* --verbose || (rm -rf $(BUILD_FILES); $(error "Twine failed to publish!"))	
 
 freeze:
 	$(PYBUILD) --freeze $(VENV_DIR)
@@ -398,7 +392,7 @@ completion: .FORCE
 
 
 clean: .FORCE
-	find $(PACKAGES_FULL_PATH) -name __pycache__ -exec rm -rf {} \;
+	find $(PACKAGES_FULL_PATH) -name __pycache__ -exec rm -rf {} \; 2>/dev/null
 	TMPDIR=`mktemp -d`
 	# Handle errors with || so make doesn't bail, but we still get to spit out
 	# a warning
@@ -433,7 +427,7 @@ rebuild: deploy
 
 .FORCE :
 	
-.SILENT : clean completion checkmake compat dep freeze new pypirc deploy $(DOC_MD) $(REQUIREMENTS_TXT) $(VENV_DIR) $(CONSTRAINTS_TXT)
+.SILENT : release push publish clean completion checkmake compat dep freeze new pypirc deploy $(DOC_MD) $(REQUIREMENTS_TXT) $(VENV_DIR) $(CONSTRAINTS_TXT)
 
 .ONESHELL : clean new freeze pypirc
 
