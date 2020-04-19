@@ -41,8 +41,11 @@ PACKAGES := packages
 PACKAGES_BIN := $(PACKAGES)/bin
 PYPIRC := $(ROOT_DIR)/.pypirc.template
 CC = gcc  # An optional dependency, really. It depends on what packages you need
+# Note, twine is a dependency for publishing to a PyPi
 TWINE = twine
-# Note, twine is a publish-time dependency. It should be in your
+# Tag the initial checkin when using the `new` target. This makes it
+# a step less to utilize versioneer
+NEW_REPO_VERSION_TAG = 0.0.1
 # venv/requirements.txt already, you shouldn't remove it
 DEPENDENCIES = rm git cp mv mktemp dirname realpath
 REQUIREMENTS_TXT := $(ROOT_DIR)/venv/requirements.txt
@@ -261,10 +264,11 @@ new:
          cp -a $(VENV_DIR)/constraints.txt $$REPO_VENV && \
          cp -a $(NEW_INSTALL_FILES) $$REPO_BASENAME && \
          mv $$REPO_BASENAME ../ ; x=$$PWD; cd ../$$REPO_BASENAME; \
-         git add . && git add -f packages \
+         git add . && git add -f packages && \
          $$EDITOR .git/config && \
          git commit -m "Installing pyboot environment" . && \
          git push && \
+         git tag $(NEW_REPO_VERSION_TAG) && git push --tags && \
          cd $$x ; \
          echo ; \
          echo "pyboot: Completed, project $$REPO_BASENAME now has pyboot skeleton checked in !!" \
