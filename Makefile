@@ -250,7 +250,7 @@ new:
          cp -r $(PROJECT_FILES) $$REPO_BASENAME/ && \
          export REPO_VENV=$$REPO_BASENAME/$(VENV_DIR) && \
          mkdir -p $$REPO_VENV && \
-         cp $(VENV_DIR)/requirements.txt $$REPO_VENV && \
+         cp $(VENV_DIR)/requirements*.txt $$REPO_VENV && \
          cp $(VENV_DIR)/constraints.txt $$REPO_VENV && \
          mv $$REPO_BASENAME ../ ; x=$$PWD; cd ../$$REPO_BASENAME; \
          git add . && \
