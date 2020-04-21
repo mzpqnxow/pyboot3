@@ -112,7 +112,7 @@ endef
 export PYPIRC_MESSAGE
 
 define PROJECT_HELP_MSG
-PyBuild23 - https://github.com/mzpqnxow/pyboot
+pyboot3 - https://github.com/mzpqnxow/pyboot3
 
     Automatically deploy Python Virtual Environments for production applications without any
     system or local user dependencies (i.e. pip, virtualenv, setuptools, pysocks, etc)
