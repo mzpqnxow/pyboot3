@@ -1,0 +1,6 @@
+# Using PEP518 to specify build-time dependencies
+# This example is for cython-based projects
+# [build-system]
+# requires = ["setuptools", "wheel", "cython"]
+# build-backend = "setuptools.build_meta"
+
