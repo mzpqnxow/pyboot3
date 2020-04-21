@@ -1,10 +1,20 @@
+#
+# pyboot3 packages/.gitignore
+#
+# This requires a special .gitignore file because it is a prepackages
+# set of files. It won't ever be changed by the user/developer when
+# deploying a virtualenv or publishing, however it will be used by
+# me when upgrading packages while performing maintenance on pyboot3
+#
+# AG
+#
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 develop-eggs/
-dist/
+/dist
 downloads/
 eggs/
 .eggs/
@@ -42,10 +52,3 @@ target/
 .env
 .venv
 ENV/
-venv/*
-!venv/frozen-requirements-*
-!venv/requirements.txt
-!venv/constraints.txt
-!venv/requirements-base.txt
-!venv/requirements-project.txt
-!packages/
