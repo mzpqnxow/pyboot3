@@ -1,5 +1,32 @@
-__pycache__/
-*.py[cod]
-*$py.class
-!bin/
-!lib/
+#
+# pyboot3 packages/.gitignore
+#
+# This requires a special .gitignore file because it is a prepackages
+# set of files. It won't ever be changed by the user/developer when
+# deploying a virtualenv or publishing, however it will be used by
+# me when upgrading packages while performing maintenance on pyboot3
+#
+# AG
+#
+/*    
+!/bin
+/bin/*
+
+!/bin/easy_install
+!/bin/easy_install-3.5
+!/bin/pip
+!/bin/pip3
+!/bin/pip3.5
+!/bin/virtualenv
+
+!/lib
+/lib/*
+
+# Only cover 3.5 here because the rest are symlinks anyway
+!/lib/python3.5
+/lib/python3.5/*
+
+!/lib/python3.5/site-packages/
+# The .egg-info here is extremely important
+!/lib/*.egg-info
+
