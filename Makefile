@@ -35,33 +35,31 @@ PYTHON3 = $(shell which python3)
 DOC_MD = README.md
 VENV_DIR = venv/
 UNAME_S := $(shell uname -s)
-RM_RF := /bin/rm -rf
 PYBUILD := ./pyboot
 BUILD_FILES := build dist *.egg-info
-PROJECT_FILES := etc packages pyboot .gitignore Makefile
-COPY_FILES := etc packages pyboot Makefile venv
+PROJECT_FILES := etc venv packages pyboot Makefile
 PACKAGES := packages
 PACKAGES_BIN := $(PACKAGES)/bin
-CHECKMAKE_INI_TMP := checkmake.ini
-CHECKMAKE_INI := .$(CHECKMAKE_INI_TMP)
 PACKAGES_FULL_PATH := $(ROOT_DIR)/$(PACKAGES)
-# SHELL := /bin/bash
 
 PYPIRC := $(ROOT_DIR)/.pypirc.template
-# SHELL := $(basename $(echo $SHELL))
-CC = gcc  # An optional dependency, really. It depends on what packages you need
-# Note, twine is a dependency for publishing to a PyPi
+# Note, twine is a dependency for publishing to a PyPi instance
 TWINE = twine
 # Tag the initial checkin when using the `new` target. This makes it
 # a step less to utilize versioneer
 NEW_REPO_VERSION_TAG = 0.0.1
 
+# These dependencies are to prepare you for building native code Python
+# packages. Nothing is required for pyboot to run, except git which is
+# required when using the `make new` target!
 DEBIAN_DEPS := autoconf automake build-essential git libpython3-dev pandoc python3-dev
-REDHAT_DEPS :=
+# Red Hat package names are not tested, but this should be close ...
+# It is possible that python3 and libpython3 headers are just called
+# python-devel and libpython-devel *shrug*
+REDHAT_DEPS := autoconf automake git python3-devel libpython3-devel
 REQUIREMENTS_TXT := $(ROOT_DIR)/venv/requirements.txt
 CONSTRAINTS_TXT := $(ROOT_DIR)/venv/constraints.txt
-
-NEW_INSTALL_FILES = .gitignore .isort.cfg .pypirc.template .style.yapf
+NEW_INSTALL_FILES = .gitignore .pypirc.template
 NEW_INSTALL_FILES += setup.py setup.cfg
 
 
@@ -289,7 +287,7 @@ endif
 	echo Publishing to PyPi using Twine ...
 	$(TWINE) upload -r local dist/* --verbose || (rm -rf $(BUILD_FILES); $(error "Twine failed to publish!"))	
 
-freeze:
+freeze: .FORCE
 	$(PYBUILD) --freeze $(VENV_DIR)
 	echo
 	echo
@@ -339,6 +337,7 @@ ifneq ("$(wildcard /etc/debian_version)", "")
 else ifneq ("$(wildcard /etc/redhat-release)", "")
 	echo "Red Hat derivative, using yum to install the following packages:"
 	echo "$(REDHAT_DEPS)"
+	sudo yum groupinstall "Development Tools"
 	sudo yum install $(REDHAT_DEPS)
 else ifeq ($(UNAME), Darwin)
 	echo "Not familiar with dependency installation process for $(UNAME_S)""
@@ -350,10 +349,9 @@ else:
 endif
 	exit
 
-# Really ought to do this much more cleverly. Using rsync would be smarter
-# Doing things safer, like using `cp -i` is probably a good idea too, but
-# it is documented that this should be done on *empty* repositories, so there
-# is some fair warning ..
+# This is hazardous if your project has colliding filenames
+# It is meant to be used when your project is empty, right
+# after you create the repository!
 new: clean
 	cd $(ROOT_DIR)
 	REPO_STRIPPED=$$(echo $(REPO) | sed -e 's|\.git||')
@@ -363,8 +361,10 @@ new: clean
 	cp -r $(PROJECT_FILES) $$REPO_BASENAME/
 	REPO_VENV=$$REPO_BASENAME/$(VENV_DIR)
 	mkdir -p $$REPO_VENV
-	cp -a $(VENV_DIR)/requirements*.txt $$REPO_VENV
-	cp -a $(VENV_DIR)/constraints.txt $$REPO_VENV
+	cp -a $(VENV_DIR)/*requirements*.txt* $$REPO_VENV
+	cp -a $(VENV_DIR)/*constraints*.txt* $$REPO_VENV
+	cp -a $(VENV_DIR)/.gitignore $$REPO_VENV
+	cp -a $(VENV_DIR)/*pyproject.toml* $$REPO_VENV
 	cp -a $(NEW_INSTALL_FILES) $$REPO_BASENAME
 	mv $$REPO_BASENAME ../
 	bootroot=$$PWD
@@ -373,6 +373,8 @@ new: clean
 	git add -f packages
 	$$EDITOR .git/config
 	git commit -m "Installing pyboot environment" .
+	echo -n "Please press enter to push changes, or Control-c to cancel ... "
+	read ok
 	git push
 	git tag $(NEW_REPO_VERSION_TAG)
 	git push --tags
@@ -393,21 +395,20 @@ completion: .FORCE
 
 
 clean: .FORCE
-	find $(PACKAGES_FULL_PATH) -name __pycache__ -exec rm -rf {} \; 2>/dev/null
+	find $(PACKAGES_FULL_PATH) -name __pycache__ -o -name \*.pyc -exec rm -rf {} \; 2>/dev/null
 	TMPDIR=`mktemp -d`
-	# Handle errors with || so make doesn't bail, but we still get to spit out
-	# a warning
-	cp -f venv/*requirements*.txt venv/constraints.txt $$TMPDIR/ 2>/dev/null || \
+	# Handle errors with || so make doesn't bail, but we still get to spit out a warning
+	cp -f $(VENV_DIR)/.gitignore $(VENV_DIR)/*pyproject.toml* $(VENV_DIR)/*requirements*.txt* $(VENV_DIR)/*constraints*.txt* $$TMPDIR/ 2>/dev/null || \
 	  ( \
 	  	echo 'WARN\nWARN: requirements.txt is missing, rebuilding with boilerplate requirements.txt\nWARN'; \
 	  	echo "$$REQUIREMENTS_TXT_CONTENT" > $(REQUIREMENTS_TXT) \
-	  ) && cp -f venv/*requirements*.txt venv/constraints.txt $$TMPDIR/
-	  rm -rf $(VENV_DIR)
-	  mkdir $(VENV_DIR)
-	  mv $$TMPDIR/*requirements*.txt $$TMPDIR/constraints.txt $(VENV_DIR)/
-		rm -rf $(BUILD_FILES) $$TMPDIR
+	  ) && cp -f $(VENV_DIR)/.gitignore $(VENV_DIR)/pyproject.toml* $(VENV_DIR)/*requirements*.txt* $(VENV_DIR)/*constraints*.txt* $$TMPDIR/
+	rm -rf $(VENV_DIR)
+	mkdir $(VENV_DIR)
+	mv $$TMPDIR/.gitignore $$TMPDIR/*pyproject.toml* $$TMPDIR/*requirements*.txt* $$TMPDIR/*constraints*.txt* $(VENV_DIR)/
+	rm -rf $(BUILD_FILES) $$TMPDIR
 
-compat:
+compat: .FORCE
 ifeq ($(UNAME_S), Linux)
 	echo $(UNAME_S) is well-tested and supported
 else ifeq ($(UNAME_S), Darwin)
@@ -418,8 +419,7 @@ endif
 	exit
 
 checkmake: .FORCE
-	cp $(CHECKMAKE_INI) $(CHECKMAKE_INI_TMP) && checkmake Makefile
-	rm -f $(CHECKMAKE_INI_TMP)
+	checkmake Makefile
 
 # Rebuild works by just calling deploy because deploy performs a clean
 rebuild: deploy
