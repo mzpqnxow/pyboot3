@@ -1,0 +1,8 @@
+# PEP518
+# Define what is required to build your package
+# This example is for packages relying on cython
+
+# [build-system]
+# requires = ["setuptools", "wheel", "cython"]
+# build-backend = "setuptools.build_meta"
+
