@@ -1,0 +1,48 @@
++ Makefile
++ setup.py
++ setup.cfg
+
++ etc/
+
++ etc/interactive
++ etc/pip*.ini
++ etc/pip.ini.*
+
++ venv/
+
++ venv/*constraints*.txt
++ venv/*requirements*.txt*
++ venv/*pyproject.toml*
++ venv/*constraints*.txt*
++ venv/*requirements*.txt*
+
++ packages/
++ packages/lib/
++ packages/bin/
+
++ packages/lib/python3/
++ packages/lib/python3.5/
++ packages/lib/python3.7/
+
++ packages/lib/python3/site-packages/
++ packages/lib/python3.5/site-packages/
++ packages/lib/python3.7/site-packages/
+
+
++ packages/lib/python3/site-packages/**
++ packages/lib/python3.5/site-packages/**
++ packages/lib/python3.7/site-packages/**
+
++ packages/bin/easy_install
++ packages/bin/easy_install-3.5
++ packages/bin/pip
++ packages/bin/pip3
++ packages/bin/pip3.5
++ packages/bin/virtualenv
+
+
+- __pycache__
+- *.py[cod]
+- *$py.class
+- *.pyc
+- *
