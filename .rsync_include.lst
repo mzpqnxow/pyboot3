@@ -8,6 +8,7 @@
 - *$py.class
 - *.pyc
 
++ .gitignore
 + Makefile
 + setup.py
 + setup.cfg
@@ -20,7 +21,7 @@
 + etc/.gitignore
 
 + venv
-+ venv/.igitnore
++ venv/.gitignore
 + venv/*constraints*.txt
 + venv/*requirements*.txt*
 + venv/*pyproject.toml*
@@ -29,6 +30,7 @@
 
 + packages
 
++ packages/.gitignore
 + packages/lib/
 + packages/lib/python3
 + packages/lib/python3.5/
