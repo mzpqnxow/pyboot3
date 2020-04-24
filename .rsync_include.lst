@@ -1,38 +1,49 @@
+# This is for using the `make new` and `make upgrade` targets, which allow you
+# to install pyboot3 into a new or existing project. This ensure that only
+# relevant files are copied, and as important, only pyboot3 specific files
+# are destroyed. In the rare even of a collision that leads to a deletion, the
+# original file will be stored in 
+- __pycache__
+- *.py[cod]
+- *$py.class
+- *.pyc
+
 + Makefile
 + setup.py
 + setup.cfg
++ pyboot
 
-+ etc/
-
++ etc
 + etc/interactive
 + etc/pip*.ini
 + etc/pip.ini.*
++ etc/.gitignore
 
-+ venv/
-
++ venv
++ venv/.igitnore
 + venv/*constraints*.txt
 + venv/*requirements*.txt*
 + venv/*pyproject.toml*
 + venv/*constraints*.txt*
 + venv/*requirements*.txt*
 
-+ packages/
++ packages
+
 + packages/lib/
-+ packages/bin/
-
-+ packages/lib/python3/
++ packages/lib/python3
 + packages/lib/python3.5/
-+ packages/lib/python3.7/
++ packages/lib/python3.7
 
-+ packages/lib/python3/site-packages/
-+ packages/lib/python3.5/site-packages/
-+ packages/lib/python3.7/site-packages/
+# + packages/lib/python3/site-packages/
++ packages/lib/python3.5/site-packages
+#+ packages/lib/python3.7/site-packages/
 
 
-+ packages/lib/python3/site-packages/**
+# + packages/lib/python3/site-packages/**
 + packages/lib/python3.5/site-packages/**
-+ packages/lib/python3.7/site-packages/**
+# + packages/lib/python3.7/site-packages/**
 
++ packages/bin/
 + packages/bin/easy_install
 + packages/bin/easy_install-3.5
 + packages/bin/pip
@@ -40,9 +51,4 @@
 + packages/bin/pip3.5
 + packages/bin/virtualenv
 
-
-- __pycache__
-- *.py[cod]
-- *$py.class
-- *.pyc
-- *
+- **
