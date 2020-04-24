@@ -1,8 +1,8 @@
 # This is for using the `make new` and `make upgrade` targets, which allow you
 # to install pyboot3 into a new or existing project. This ensure that only
 # relevant files are copied, and as important, only pyboot3 specific files
-# are destroyed. In the rare even of a collision that leads to a deletion, the
-# original file will be stored in 
+# are overwritten/modified. In the rare even of a collision that leads to a
+# deletion, the original file will be stored in a backup directory
 - __pycache__
 - *.py[cod]
 - *$py.class
@@ -36,14 +36,10 @@
 + packages/lib/python3.5/
 + packages/lib/python3.7
 
-# + packages/lib/python3/site-packages/
 + packages/lib/python3.5/site-packages
-#+ packages/lib/python3.7/site-packages/
 
 
-# + packages/lib/python3/site-packages/**
 + packages/lib/python3.5/site-packages/**
-# + packages/lib/python3.7/site-packages/**
 
 + packages/bin/
 + packages/bin/easy_install
