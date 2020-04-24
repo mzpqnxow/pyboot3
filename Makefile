@@ -13,7 +13,7 @@
 #
 # Remember that PYTHON3 can be overridden on the command line
 # using `make PYTHON3=/opt/my/python`. The same is true of the
-# VENV_DIR but there's really no reason to change the venv dir IMO.
+# VENV_PATH but there's really no reason to change the venv dir IMO.
 #
 # TODO(AG): Consider utilizing some of the GNU special PHONY targets
 #           to reduce target size and complexity
@@ -29,19 +29,29 @@
 #
 DEPENDENCIES := date make dirname which uname git rm mv python3 realpath
 EPOCH := $(shell date +%s)
+DATE_EPOCH = $(shell date +%Y%m%d.%s)
 USER_PYPIRC_FILE := ~/.pypirc
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 PYTHON3 = $(shell which python3)
 DOC_MD = README.md
-VENV_DIR = venv/
+VENV_PATH = venv/
 UNAME_S := $(shell uname -s)
 PYBUILD := ./pyboot
 BUILD_FILES := build dist *.egg-info
-PROJECT_FILES := etc venv packages pyboot Makefile
 PACKAGES := packages
 PACKAGES_BIN := $(PACKAGES)/bin
 PACKAGES_FULL_PATH := $(ROOT_DIR)/$(PACKAGES)
-
+UPGRADING_TMPDIR := $(ROOT_DIR)/../pyboot.upgrade.inprogress.$(DATE_EPOCH)
+BACKUP_RELDIR := pyboot.upgrade.$(EPOCH)
+PROJECT_FILES := etc venv $(PACKAGES) pyboot Makefile
+PYBOOT_INSTALL_BACKUP_BRNACH := pyboot-install-$(EPOCH)
+PYBOOT_BACKUP_BASENAME := pyboot.backup.$(DATE_EPOCH)
+PYBOOT_GIT_INITIAL_COMMIT_SCRIPT_NAME := git_init_pyboot.sh
+RSYNC_INSTALL_FILE := .rsync_include.lst
+# If using make new or make install, use a specific branch, to avoid
+# mistakes. Change from master :)
+BRANCH = master
+GIT_NEW_ADD_FILE := Makefile etc git_init_pyboot.sh packages/ pyboot setup.py venv
 PYPIRC := $(ROOT_DIR)/.pypirc.template
 # Note, twine is a dependency for publishing to a PyPi instance
 TWINE = twine
@@ -89,6 +99,20 @@ twine                           # The new way to publish to a PyPi repository
 endef
 export REQUIREMENTS_TXT_CONTENT
 
+
+define PYBOOT_GIT_INITIAL_COMMIT_SH
+#!/bin/bash
+git commit -m "Installing pyboot environment"
+git push || echo "WARN: Not pushing changes"
+git tag x.y.z  # Recommended starting tag if you plan to use versioneer: 0.0.1
+git push --tags
+echo "Please consider using versioneer install after updating setup.cfg and setup.py"
+echo "With versioneer, you will be able to use 'make release' to autobump tags to"
+echo "GitHub, which will allow you to pip install packages by version very easily"
+echo "It will also allow you a simple tag-based versioning system to aid in rollbacks"
+endef
+export PYBOOT_GIT_INITIAL_COMMIT_SH
+
 # If requirements.txt gets hosed, build a new, sane one
 define CONSTRAINTS_TXT_CONTENT
 endef
@@ -108,6 +132,40 @@ SECURITY: The file will be stored mode 0600 in ~/.pypirc, private from other use
 
 endef
 export PYPIRC_MESSAGE
+
+define GITIGNORE_MESSAGE
+WARN:   At this time, there was no effort to made to keep any special entries in the root
+        .gitignore file. You should be OK there since the only files critical for pyboot3
+        are subdirectories and innocuous files in root that should never be git ignored;
+        These files include:
+
+          - Makefile
+		  - pyboot3
+
+        Other files are in subdirectories and include their own directory specific .gitignore
+	    files. These include:
+
+          - venv/.gitignore
+	      - etc/.gitignore
+	      - packages/.gitignore
+
+In summary, installation we complete. Please check for existance of the following:
+endef
+export GITIGNORE_MESSAGE
+
+define GIT_CONFIG_MESSAGE
+You will now have a chance to edit the .git/config file for the project. You may want
+to enter a user section for per-project commit identity, or maybe enter other git config
+entries. For example, you can set your identity for this specific project like this:
+
+[user]
+name = Sam Walton
+email = SamTheMan@walmart.com
+
+NOTE: This will not take effect until your first commit!
+
+endef
+export GIT_CONFIG_MESSAGE
 
 define PROJECT_HELP_MSG
 pyboot3 - https://github.com/mzpqnxow/pyboot3
@@ -207,23 +265,23 @@ all:
 requirements: $(REQUIREMENTS_TXT)
 constraints: $(CONSTRAINTS_TXT)
 
-deploy: $(VENV_DIR) clean
-	echo "Executing pyboot (`basename $(PYBUILD)` -p $(PYTHON3) $(VENV_DIR))"
-	$(PYBUILD) -p $(PYTHON3) $(VENV_DIR)
+deploy: $(VENV_PATH) clean
+	echo "Executing pyboot (`basename $(PYBUILD)` -p $(PYTHON3) $(VENV_PATH))"
+	$(PYBUILD) -p $(PYTHON3) $(VENV_PATH)
 
 dev: deploy
 python3: deploy
 
-$(REQUIREMENTS_TXT): $(VENV_DIR)
+$(REQUIREMENTS_TXT): $(VENV_PATH)
 	echo "$$REQUIREMENTS_TXT_CONTENT" > $(REQUIREMENTS_TXT)
 
-$(CONSTRAINTS_TXT): $(VENV_DIR)
+$(CONSTRAINTS_TXT): $(VENV_PATH)
 	echo "$$CONSTRAINTS_TXT_CONTENT" > $(CONSTRAINTS_TXT)
 
-$(VENV_DIR):
+$(VENV_PATH):
 	echo 'WARN'; \
-	echo 'WARN: VENV_DIR is missing, making directory\nWARN'; \
-	mkdir -p $(VENV_DIR)
+	echo 'WARN: VENV_PATH is missing, making directory\nWARN'; \
+	mkdir -p $(VENV_PATH)
 
 $(DOC_MD):
 	echo You must have a README.md file present or pass DOC_MD=yourdoc.md to make
@@ -288,10 +346,10 @@ endif
 	$(TWINE) upload -r local dist/* --verbose || (rm -rf $(BUILD_FILES); $(error "Twine failed to publish!"))	
 
 freeze: .FORCE
-	$(PYBUILD) --freeze $(VENV_DIR)
+	$(PYBUILD) --freeze $(VENV_PATH)
 	echo
 	echo
-	latest_version=$$(realpath $$(ls -lr $(VENV_DIR)/frozen-requirements-* | tail -1 | awk '{print $$9}'))
+	latest_version=$$(realpath $$(ls -lr $(VENV_PATH)/frozen-requirements-* | tail -1 | awk '{print $$9}'))
 	echo You probably want to git add $$latest_version
 	echo
 
@@ -352,23 +410,96 @@ endif
 # This is hazardous if your project has colliding filenames
 # It is meant to be used when your project is empty, right
 # after you create the repository!
+#
+# repo_uri: Full URI for git clone argument with the .git
+#                    suffix removed it it was present
+#
 new: clean
+	set -e
 	cd $(ROOT_DIR)
-	REPO_STRIPPED=$$(echo $(REPO) | sed -e 's|\.git||')
-	REPO_BASENAME=$$(basename $$REPO_STRIPPED)
-	git clone $$REPO_STRIPPED
+	repo_uri=$$(echo $(REPO) | sed -e 's|\.git||')
+	repo_name=$$(basename $$repo_uri)
+	repo_working_root=$(UPGRADING_TMPDIR)/$$repo_name
+	mkdir -p $(UPGRADING_TMPDIR)
+	# git clone $$repo_uri --branch $(BRANCH) $(UPGRADING_TMPDIR)/$$repo_name
+	git clone $$repo_uri $(UPGRADING_TMPDIR)/$$repo_name
+	working_repo_root=$(UPGRADING_TMPDIR)/$$repo_name
+	mkdir -p $$working_repo_root/$(PYBOOT_BACKUP_BASENAME)
+	rsync -a -P -v --delete-during --backup --backup-dir=$$working_repo_root/$(PYBOOT_BACKUP_BASENAME) --include-from=$(RSYNC_INSTALL_FILE) . $(UPGRADING_TMPDIR)/$$repo_name
+	cd $(UPGRADING_TMPDIR)/$$repo_name
+	echo "$$GIT_CONFIG_MESSAGE"
+	echo -n "Press enter to continue with editing the file with your default editor ($$EDITOR) ... "
+	read ok
+	$$EDITOR .git/config
+	# Used to do this automatically. Now we provide a shellscript in the repo that the user
+	# can run to perform these tasks
+	# git commit -m "Installing pyboot environment" . || echo "Choosing not to commit, no problem ..."
+	# git push || echo "WARN: Not pushing changes"
+	# git tag $(NEW_REPO_VERSION_TAG)
+	# git push --tags || echo "WARN: Not pushing tags"
+	cd $(ROOT_DIR)
+	echo "$$PYBOOT_GIT_INITIAL_COMMIT_SH" > $$working_repo_root/$(PYBOOT_GIT_INITIAL_COMMIT_SCRIPT_NAME)
+	chmod 755 $$working_repo_root/$(PYBOOT_GIT_INITIAL_COMMIT_SCRIPT_NAME)
+	echo ""
+	echo "pyboot: Completed, project $$repo_name now has pyboot skeleton checked in !!"
+	echo ""
+	echo "Use to following to work on your new project:"
+	echo ""
+	echo "    $ cd $$working_repo_root"
+	echo "    $ git log"
+	echo "    $ git status"
+	echo "    $ git branch -l"
+	echo
+	echo "NOTICE: If any files were clobbered during upgrade/installation of pyboot3, you can"
+	echo "        find backup copies of those files in $$working_repo_root/$(PYBOOT_BACKUP_BASENAME)"
+	echo "        in the original file structure, with the original filename and original contents"
+	echo "        You should manually and selectively restore them, if needed"
+	echo "$$GITIGNORE_MESSAGE"
+	echo "$(realpath --relative-to=$PWD $$working_repo_root/$(PYBOOT_BACKUP_BASENAME))"
+	echo 
+	echo "It is HIGHLY recommended that you review this and then modify it if necessary and then"
+	echo "execute it. This will make the changes official in your repository"
+	echo
+	echo "Thanks, please come again!"
+
+install: clean
+	# R
+	# ROOT_DIR: Root directory of this script
+	echo "WARN: Install means that existing files in a repository may be clobbered!"
+	cd $(ROOT_DIR)
+# PWD: pybuild3
+# 	Remove the .git extension of the repo if it was cloned with .git (optional)
+	repo_stripped=$$(echo $(REPO) | sed -e 's|\.git||')
+#	Get the basename of the repo, convert git/https/ssh url to project name
+	$$target_basename=$$(basename $$repo_stripped)
+#	Clone master
+	echo Cloning $$repo_stripped/$(BRANCH)
+	git clone $$repo_stripped --branch $(BRANCH)
 	pwd
-	cp -r $(PROJECT_FILES) $$REPO_BASENAME/
-	REPO_VENV=$$REPO_BASENAME/$(VENV_DIR)
-	mkdir -p $$REPO_VENV
-	cp -a $(VENV_DIR)/*requirements*.txt* $$REPO_VENV
-	cp -a $(VENV_DIR)/*constraints*.txt* $$REPO_VENV
-	cp -a $(VENV_DIR)/.gitignore $$REPO_VENV
-	cp -a $(VENV_DIR)/*pyproject.toml* $$REPO_VENV
-	cp -a $(NEW_INSTALL_FILES) $$REPO_BASENAME
-	mv $$REPO_BASENAME ../
+	target_backup=$$target_basename/$(EPOCH)
+	mkdir -p $$target_backup
+# 	Copy our files into the target repo, now empty except for the epoch directory backup
+	rsync --ignore-existing -ra --progress --exclude .git $$target_backup
+	# Copy existing project files to a backup directory
+	cp $$target_basename/ $$target_backup/
+	cp -r $(PROJECT_FILES) $$target_basename/
+	TARGET_VENV=$$target_basename/$(VENV_PATH)
+	
+	mkdir -p $$TARGET_VENV
+	rsync -a -v --files-from=FILE $(VENV_PATH)/.install_rsync_include.lst $(VENV_PATH) $$TARGET_VENV
+	rsync -aP --include-from=rs src/ dst/
+	# cp -a $(VENV_PATH)/*requirements*.txt* $$TARGET_VENV
+	# cp -a $(VENV_PATH)/*constraints*.txt* $$TARGET_VENV
+	# cp -a $(VENV_PATH)/.gitignore $$TARGET_VENV
+	# cp -a $(VENV_PATH)/*pyproject.toml* $$TARGET_VENV
+	cp -a $(NEW_INSTALL_FILES) $$target_basename
+	mv $$target_basename ../
 	bootroot=$$PWD
-	cd ../$$REPO_BASENAME
+	cd ../$$target_basename
+# $PWD: ../user_repo_name
+	git checkout -b $(PYBOOT_INSTALL_BACKUP_BRNACH)
+	echo "Checked out new branch '$(PYBOOT_INSTALL_BACKUP_BRNACH)', pushing now ..."
+	git push origin $(PYBOOT_INSTALL_BACKUP_BRNACH)
 	git add .
 	git add -f packages
 	$$EDITOR .git/config
@@ -379,12 +510,13 @@ new: clean
 	git tag $(NEW_REPO_VERSION_TAG)
 	git push --tags
 	cd $$bootroot
+# $PWD: pybuild3/
 	echo ""
-	echo "pyboot: Completed, project $$REPO_BASENAME now has pyboot skeleton checked in !!"
+	echo "pyboot: Completed, project $$target_basename now has pyboot skeleton checked in !!"
 	echo ""
 	echo "Use to following to work on your new project:"
 	echo ""
-	echo "    $ cd ../$$REPO_BASENAME"
+	echo "    $ cd ../$$target_basename"
 	echo "    $ git log"
 	echo
 
@@ -395,17 +527,18 @@ completion: .FORCE
 
 
 clean: .FORCE
+	set -e
 	find $(PACKAGES_FULL_PATH) -name __pycache__ -o -name \*.pyc -exec rm -rf {} \; 2>/dev/null
 	TMPDIR=`mktemp -d`
 	# Handle errors with || so make doesn't bail, but we still get to spit out a warning
-	cp -f $(VENV_DIR)/.gitignore $(VENV_DIR)/*pyproject.toml* $(VENV_DIR)/*requirements*.txt* $(VENV_DIR)/*constraints*.txt* $$TMPDIR/ 2>/dev/null || \
+	cp -f $(VENV_PATH)/.gitignore $(VENV_PATH)/*pyproject*.toml* $(VENV_PATH)/*requirements*.txt* $(VENV_PATH)/*constraints*.txt* $$TMPDIR/ 2>/dev/null || \
 	  ( \
 	  	echo 'WARN\nWARN: requirements.txt is missing, rebuilding with boilerplate requirements.txt\nWARN'; \
 	  	echo "$$REQUIREMENTS_TXT_CONTENT" > $(REQUIREMENTS_TXT) \
-	  ) && cp -f $(VENV_DIR)/.gitignore $(VENV_DIR)/pyproject.toml* $(VENV_DIR)/*requirements*.txt* $(VENV_DIR)/*constraints*.txt* $$TMPDIR/
-	rm -rf $(VENV_DIR)
-	mkdir $(VENV_DIR)
-	mv $$TMPDIR/.gitignore $$TMPDIR/*pyproject.toml* $$TMPDIR/*requirements*.txt* $$TMPDIR/*constraints*.txt* $(VENV_DIR)/
+	  ) && cp -f $(VENV_PATH)/.gitignore $(VENV_PATH)/pyproject*.toml* $(VENV_PATH)/*requirements*.txt* $(VENV_PATH)/*constraints*.txt* $$TMPDIR/
+	rm -rf $(VENV_PATH)
+	mkdir $(VENV_PATH)
+	mv $$TMPDIR/.gitignore $$TMPDIR/*pyproject.toml* $$TMPDIR/*requirements*.txt* $$TMPDIR/*constraints*.txt* $(VENV_PATH)/
 	rm -rf $(BUILD_FILES) $$TMPDIR
 
 compat: .FORCE
@@ -428,7 +561,7 @@ rebuild: deploy
 
 .FORCE :
 	
-.SILENT : release push publish clean completion checkmake compat dep freeze new pypirc deploy $(DOC_MD) $(REQUIREMENTS_TXT) $(VENV_DIR) $(CONSTRAINTS_TXT)
+.SILENT : release push publish clean completion checkmake compat dep freeze new pypirc deploy $(DOC_MD) $(REQUIREMENTS_TXT) $(VENV_PATH) $(CONSTRAINTS_TXT)
 
 .ONESHELL : clean new freeze pypirc
 
