@@ -462,64 +462,6 @@ new: clean
 	echo
 	echo "Thanks, please come again!"
 
-install: clean
-	# R
-	# ROOT_DIR: Root directory of this script
-	echo "WARN: Install means that existing files in a repository may be clobbered!"
-	cd $(ROOT_DIR)
-# PWD: pybuild3
-# 	Remove the .git extension of the repo if it was cloned with .git (optional)
-	repo_stripped=$$(echo $(REPO) | sed -e 's|\.git||')
-#	Get the basename of the repo, convert git/https/ssh url to project name
-	$$target_basename=$$(basename $$repo_stripped)
-#	Clone master
-	echo Cloning $$repo_stripped/$(BRANCH)
-	git clone $$repo_stripped --branch $(BRANCH)
-	pwd
-	target_backup=$$target_basename/$(EPOCH)
-	mkdir -p $$target_backup
-# 	Copy our files into the target repo, now empty except for the epoch directory backup
-	rsync --ignore-existing -ra --progress --exclude .git $$target_backup
-	# Copy existing project files to a backup directory
-	cp $$target_basename/ $$target_backup/
-	cp -r $(PROJECT_FILES) $$target_basename/
-	TARGET_VENV=$$target_basename/$(VENV_PATH)
-	
-	mkdir -p $$TARGET_VENV
-	rsync -a -v --files-from=FILE $(VENV_PATH)/.install_rsync_include.lst $(VENV_PATH) $$TARGET_VENV
-	rsync -aP --include-from=rs src/ dst/
-	# cp -a $(VENV_PATH)/*requirements*.txt* $$TARGET_VENV
-	# cp -a $(VENV_PATH)/*constraints*.txt* $$TARGET_VENV
-	# cp -a $(VENV_PATH)/.gitignore $$TARGET_VENV
-	# cp -a $(VENV_PATH)/*pyproject.toml* $$TARGET_VENV
-	cp -a $(NEW_INSTALL_FILES) $$target_basename
-	mv $$target_basename ../
-	bootroot=$$PWD
-	cd ../$$target_basename
-# $PWD: ../user_repo_name
-	git checkout -b $(PYBOOT_INSTALL_BACKUP_BRNACH)
-	echo "Checked out new branch '$(PYBOOT_INSTALL_BACKUP_BRNACH)', pushing now ..."
-	git push origin $(PYBOOT_INSTALL_BACKUP_BRNACH)
-	git add .
-	git add -f packages
-	$$EDITOR .git/config
-	git commit -m "Installing pyboot environment" .
-	echo -n "Please press enter to push changes, or Control-c to cancel ... "
-	read ok
-	git push
-	git tag $(NEW_REPO_VERSION_TAG)
-	git push --tags
-	cd $$bootroot
-# $PWD: pybuild3/
-	echo ""
-	echo "pyboot: Completed, project $$target_basename now has pyboot skeleton checked in !!"
-	echo ""
-	echo "Use to following to work on your new project:"
-	echo ""
-	echo "    $ cd ../$$target_basename"
-	echo "    $ git log"
-	echo
-
 # This target is untested and not very useful. Just do it manually
 completion: .FORCE
 	pip completion --zsh >> ~/.zshrc
@@ -529,17 +471,8 @@ completion: .FORCE
 clean: .FORCE
 	set -e
 	find $(PACKAGES_FULL_PATH) -name __pycache__ -o -name \*.pyc -exec rm -rf {} \; 2>/dev/null
-	TMPDIR=`mktemp -d`
-	# Handle errors with || so make doesn't bail, but we still get to spit out a warning
-	cp -f $(VENV_PATH)/.gitignore $(VENV_PATH)/*pyproject*.toml* $(VENV_PATH)/*requirements*.txt* $(VENV_PATH)/*constraints*.txt* $$TMPDIR/ 2>/dev/null || \
-	  ( \
-	  	echo 'WARN\nWARN: requirements.txt is missing, rebuilding with boilerplate requirements.txt\nWARN'; \
-	  	echo "$$REQUIREMENTS_TXT_CONTENT" > $(REQUIREMENTS_TXT) \
-	  ) && cp -f $(VENV_PATH)/.gitignore $(VENV_PATH)/pyproject*.toml* $(VENV_PATH)/*requirements*.txt* $(VENV_PATH)/*constraints*.txt* $$TMPDIR/
-	rm -rf $(VENV_PATH)
-	mkdir $(VENV_PATH)
-	mv $$TMPDIR/.gitignore $$TMPDIR/*pyproject.toml* $$TMPDIR/*requirements*.txt* $$TMPDIR/*constraints*.txt* $(VENV_PATH)/
-	rm -rf $(BUILD_FILES) $$TMPDIR
+	find venv -type f -not -name .gitignore -not -name \*constraints\*.txt -not -name \*requirements\*.txt -exec rm -rf {} \;
+	rm -rf $(BUILD_FILES)
 
 compat: .FORCE
 ifeq ($(UNAME_S), Linux)

@@ -24,7 +24,6 @@
 + venv/.gitignore
 + venv/*constraints*.txt
 + venv/*requirements*.txt*
-+ venv/*pyproject.toml*
 + venv/*constraints*.txt*
 + venv/*requirements*.txt*
 
