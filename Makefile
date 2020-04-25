@@ -467,7 +467,6 @@ completion: .FORCE
 	pip completion --zsh >> ~/.zshrc
 	pip completion --bash >> ~/.bashrc
 
-
 clean: .FORCE
 	set -e
 	find $(PACKAGES_FULL_PATH) -name __pycache__ -o -name \*.pyc -exec rm -rf {} \; 2>/dev/null
@@ -493,7 +492,7 @@ rebuild: deploy
 .PHONY: all checkmake clean compat completion constraints dep deploy dev doc freeze publish pypirc rebuild requirements test
 
 .FORCE :
-	
+
 .SILENT : release push publish clean completion checkmake compat dep freeze new pypirc deploy $(DOC_MD) $(REQUIREMENTS_TXT) $(VENV_PATH) $(CONSTRAINTS_TXT)
 
 .ONESHELL : clean new freeze pypirc
