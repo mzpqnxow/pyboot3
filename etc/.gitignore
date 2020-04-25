@@ -12,3 +12,4 @@
 !/interactive
 !/*pip.ini*
 !/*pip.conf*
+!/.gitignore
