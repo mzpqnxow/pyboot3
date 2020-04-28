@@ -97,6 +97,7 @@ $ git add .
 
 This will add all of the newly added files to your local project. At this point, you can actually commit and push changes to your repository
 
+```
 $ git commit -m "Installing pyboot environment"
 $ git push || echo "WARN: Not pushing changes"
 $ git tag 0.0.1  # Recommended starting tag if you plan to use versioneer: 0.0.1
