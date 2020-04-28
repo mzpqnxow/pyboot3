@@ -1,6 +1,6 @@
 ## pyboot3
 
-Use for developing and deploying Python3 projects on systems without relying on any OS packages or any other files in your local "profile". Completely repeatable and fully up to date virtualenv, setuptools, pip
+Use for developing and deploying Python3 projects on systems without relying on any OS packages or any other files in your local "profile". Completely repeatable and also contains **fully up to date** virtualenv, setuptools, pip which allows you to use new features of each. In some cases this is very important, e.g. support for pep517/518 and support for other types of "advanced" syntax in `requirements.txt`
 
 ### Using
 
