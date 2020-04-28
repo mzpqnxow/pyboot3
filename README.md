@@ -272,8 +272,8 @@ Tested on Linux x86_64, Linux ppc64le and MacOS. MacOS may require small changes
 
 ### Credits
 
-Adam Greene <copyright@mzpqnxow.com>
-David Marker
+* Adam Greene <copyright@mzpqnxow.com> for Python3, updated versions of packages, constraints support, versioneer support, `make new` support, current maintenance, etc, etc.
+* David Marker for the original concept and Python2 implementation which was much simpler and ALWAYS worked. Even on AIX 4.2 :>
 
 ### License
 
