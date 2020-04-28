@@ -91,8 +91,7 @@ setup(
     packages=find_packages(),
     python_requires=PYTHON_REQUIRES,
     scripts=SCRIPTS,
-    version=versioneer.get_version()
-    )
+    version=versioneer.get_version())
 
 
 #
