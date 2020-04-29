@@ -398,7 +398,7 @@ else ifneq ("$(wildcard /etc/redhat-release)", "")
 	sudo yum groupinstall "Development Tools"
 	sudo yum install $(REDHAT_DEPS)
 else ifeq ($(UNAME), Darwin)
-	echo "Not familiar with dependency installation process for $(UNAME_S)""
+	echo "Not familiar with dependency installation process for $(UNAME_S)"
 	echo "You probably will need to use brew or some other 3rd party package manager"
 else:
 	echo "The OS $(UNAME_S) is not known"
