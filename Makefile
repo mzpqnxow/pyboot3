@@ -104,7 +104,7 @@ define PYBOOT_GIT_INITIAL_COMMIT_SH
 #!/bin/bash
 git commit -m "Installing pyboot environment"
 git push || echo "WARN: Not pushing changes"
-git tag x.y.z  # Recommended starting tag if you plan to use versioneer: 0.0.1
+git tag 0.0.1  # Recommended starting tag if you plan to use versioneer: 0.0.1
 git push --tags
 echo "Please consider using versioneer install after updating setup.cfg and setup.py"
 echo "With versioneer, you will be able to use 'make release' to autobump tags to"
