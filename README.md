@@ -1,48 +1,74 @@
 ## pyboot3
 
-Use for developing and deploying Python3 projects on systems without relying on any OS packages or any other files in your local "profile". Completely repeatable and also contains **fully up to date** virtualenv, setuptools, pip which allows you to use new features of each. In some cases this is very important, e.g. support for pep517/518 and support for other types of "advanced" syntax in `requirements.txt`
+Use for developing and deploying Python3 projects on systems without relying on any OS packages or any other files in your local "profile". Completely repeatable and also contains **fully up to date** `virtualenv`, `setuptools`, `wheel` and `pip` which allows you to use new features of each. In some cases this is very important, e.g. support for pep517/518 and support for other types of "advanced" syntax/features in `requirements.txt`. Built to provide very easy to add usage of `versioneer` for managing releases as well as publishing to PyPi repositories via `twine`
+
+### Previous Versions
+
+`pyboot3` is the next evolution of `pybuild23` which was officially deprecated as Python 2.7 was phased out. Significant changes have been made to provide more easy to use features
 
 ### Using
 
-Use `make python3`. There is no longer support for `python2`
+If your project is already based from `pyboot3` you should be able to deploy or develop simply by using `make python3` or a handful of other targets (`dev`, `deploy`) which are currently functionally equivalent
 
 ### First Time Using
 
-If this is your first time using pyboot, see the section "I Am New" at the end of this document
+If this is your first time using `pyboot3` and you want to jump into it and install it into your project, see the section "I Am New" at the end of this document. You would be well served by reading through a few well-established packages' `setup.py` and `setup.cfg` files before doing this, though with this documentation you can certainly get things working quite well without much work at all
 
-### Versioning / Developing / Publishing / Releasing
+### Facilitating Easy Use of Developing, Releasing & Publishing (via versioneer) and Deploying
 
-Set up versioneer using `versioneer install` and edit `setup.cfg` to get it correctly configured. Tag manually once with `git tag 0.0.1 && git push --tags`. From that point on, use `make release` for an auto-bump of the version and a push to your git repository using `versioneer`
+While `pyboot3` is great for repeatable deployments, it is also meant for use as a development, versioning, and releasing & publishing environment. Some things that make it attractive:
 
-#### Publishing via Twine
+* `make dev` / `make deploy` - Build a virtual environment based on `etc/pip.ini` and `venv/requirements.txt` and `venv/constraints.txt`. This is useful for both development and deployment
+* `make publish` / `make release` - Solely for use in development, these targets manage version bumping after a one-time configuration of `versioneer` and also handle publishing to PyPi if desired. Use of `versioneer` allows precise version pinning when using a git based repository thanks for support of this in `pip` / `requirements.txt` / `constraints.txt`
+* Designed for easy integration with `versioneer` via a sample `setup.py` and `setup.cfg` allows using `versioneer install` after only a few quick changes, easy for someone who has never used `versioneer` before
+* Twine is now the tool of choice for publishing packages to PyPi repositories; this is implemented in `make publish` and a `make pypirc` target is also provided to generate a simple ~/.pypirc file based on an included template, prompting the user for credentials and the location of the repository
+* Management of multiple `constraints.txt`, `requirements.txt` and `pip.ini` is made easy by storing these files cleanly in `etc` and `venv`
 
-Twine is now the tool of choice to publish Python packages. The lines are currently commented out in the `release` / `publish` `Makefile` targets but can easily be re-enabled. You'll need a .pypirc file set up to publish. There is an example `.pypirc` file called `.pypirc.template` in the root of the repository. You can use `make pypirc` to automatically set it up for your user
-
-
-### Deployments
+### Using While Developing or Deploying
 
 Settings for your development and deployment dependencies are in `venv/`
 
+* etc/pip.ini
 * venv/constraints.txt (constraints file for forcing dependencies to use specific versions / forks / tags
 * venv/requirements-base.txt (development assistance packages, e.g. pep8, isort, ipython.. disable for deploy)
 * venv/requirements-project.txt (dependencies specific to your project)
 * venv/requirements.txt (metafile, just includes the base and project requirements)
 
+Using `make dev` builds what is effectively a full development environment or deployment environment. The only difference is whether you specify your own project name in `venv/requirements-project.txt` or not. If developing, it is trivial to test locally. Using `pip install .` allows your development environment to work the same as a deployment environment would
+
 ### Other Settings
 
 * etc/pip.ini (standard pip configuration file, will be used for your virtual environment, add things like proxy settings, repositories, etc. here)
 
-### TODO / NOTES
+### TODOs and General Notes
 
-Random stuff
+Some notes on the status of this project
 
-#### Notes From pip Documentation
+#### The Package Base - /packages
 
-Yeah, there's lots of useful and not as useful things you can do. Here are a few of those.
+The package base is the primary bulk of pyboot3 and is what makes it possible to use all of the latest features supported by setuptools and pip. It is up to date as of 4/2020 and no updates should be required until any radical PEP standards involving setuptools are made or any impactful bug fixes are released. The latest updates were important as PEP 517 and PEP 518 became established and packages such as Pandas required build-time dependencies. While most users are on x86_64 Linux or MacOS systems and can simply pull binary wheels for native code packages, users of lesser supported CPU architectures were stuck when trying to perform dynamic builds from source for packages with complex build-time dependencies. A perfect example of this is Pandas, which requires Cython as a build-time requirement, with Cython consisting of native code
 
-##### Bundling of Requirements for a Virtualenv Blob Requiring No Index
+#### The Makefile and Experience For New Users
 
-Pack it up:
+Significant improvements have been made to the `Makefile`, but they have also added some new system dependencies, most notably `rsync`. This seems to be an acceptable tradeoff as the clean and robust `rsync` based mechanism for "installing" pyboot3 into a new or existing repo were significant
+
+Some additional work could be done to better support development of pyboot3-based projects on significantly different architectures/environments, though it is not clear how much of this should really be solved by pyboot3 at the core. It's not difficult for a user/developer to add simple logic to do something like dynamically choose a specific `pip.ini` file from etc/ depending on whether the current environment requires a proxy, or requires using a different PyPi `index`. For now, the issue remains that if a project needs to be cloned and developed on in two different network environments (e.g. one with a proxy, one without) then the user will have to build a simple shim into pybuild logic to facilitate choosing the correct `pip.ini` file. A reasonable compromise would be supporting a ~/.pyboot.ini file is simply read but ignored by default. This at least provides users with a clear hook for adding small options that may be useful to them
+
+The improved rsync-based version of the `make new` target, which "installs" the pyboot3 system into a new project now works more robustly than ever before. However, users new to `setuptools` (e.g. `setup.cfg` and `setup.py`) would be better off with better documentation, either in `pyboot3` or in the form of clear pointers to external documentation
+
+There is currently a lot of unused or inconsistently used cruft between `setup.cfg` and `setup.py`. It would be better to spend some time pushing as much as is possible into `setup.cfg` to make it easier to "configure" pyboot3 when installed into a new project. There could also be some clearer evangelism of `versioneer` which is really among the nicer features of `pyboot3`.
+
+#### Providing Simple Development vs Deployment Logic Via the Makefile
+
+Currently, `make python3`, `make dev` and `make deploy` are functionalliy equivalent. These targets should probably be changed to reference, e.g. `etc/<target>/pip.ini` rather than requiring the user to move the deployment version of `pip.ini` into place when deploying, or the equivalent when developing. This is a very simple change that should be made if it makes sense. Until then, users can symlink `etc/pip.ini` to `etc/pip-prod.ini` or `etc/pip-dev.ini` or whatever they choose on their own as it's not a significant effort
+
+#### Nice to Have: Bundling of Requirements for a Virtualenv Blob Requiring No Index
+
+It would be nice to support the option of using fully packed up binary wheels for sime environments, especially for users of architectures that do not have publicly available binary wheels for native code extensions. This helps to avoid the time spent building complex dependencies from source (e.g. Pandas, Cython, numpy)
+
+Some notes on an ugly way this can be done using `pip wheel`:
+
+Building and packing it up:
 
 ```
 $ tempdir=$(mktemp -d)
@@ -51,7 +77,7 @@ $ cwd=`pwd`
 $ (cd "$tempdir"; tar -cjvf "$cwd/bundled.tar.bz2" *)
 ```
 
-Unpack/install it:
+Unpacking and installing it:
 
 ```
 $ tempdir=$(mktemp -d)
@@ -59,7 +85,7 @@ $ (cd $tempdir; tar -xvf /path/to/bundled.tar.bz2)
 $ pip install --force-reinstall --ignore-installed --upgrade --no-index --no-deps $tempdir/*
 ```
 
-Personally, I don't do this nor do I plan to
+This is not currently planned but may be implemented due to heavy use of not well-supported architectures (ppc64le is a platform I am developing and deploying on at this time)
 
 ### I Am New
 
