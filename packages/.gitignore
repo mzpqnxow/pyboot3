@@ -18,6 +18,9 @@
 !/bin/pip
 !/bin/pip3
 !/bin/pip3.5
+!/bin/wheel
+!/bin/wheel3
+!/bin/wheel-3.5
 !/bin/virtualenv
 
 !/lib
@@ -34,3 +37,4 @@
 # The .egg-info here is extremely important
 !/lib/*.egg-info
 !wheels
+!lib/wheel
