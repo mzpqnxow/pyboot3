@@ -50,8 +50,6 @@ OU = 'group'
 NAMESPACE = [ORG, OU]
 NAME = '.'.join(NAMESPACE + [PROJECT_NAME])
 
-AUTHOR = 'John Q. Doe'
-EMAIL = 'jqdoe@company.com'
 EXCLUDE_FILES = (
     '.keep',
     'constraints.txt',
@@ -80,8 +78,6 @@ DATA_FILE_LIST = enumerate_static_content(PACKAGE_DATA_DIRS)
 # If you *do* want versioneer, you'll need to do `versioneer install` inside
 # the root of the project to bootstrap it, then make some changes to setup.cfg
 setup(
-    author=AUTHOR,
-    author_email=EMAIL,
     cmdclass=versioneer.get_cmdclass(),
     data_files=DATA_FILE_LIST,
     include_package_data=True,
