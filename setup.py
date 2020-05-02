@@ -49,11 +49,11 @@ NAMESPACE = [ORG, OU]
 NAME = '.'.join(NAMESPACE + [PROJECT_NAME])
 
 EXCLUDE_FILES = (
-    '.keep',
     'constraints.txt',
     'interactive',
     'pip.ini',
-    'pip.ini.socks')
+    'pip.ini.socks',
+    '.gitignore')
 LICENSE = 'Proprietary'
 # Include data files when installed
 PACKAGE_DATA_DIRS = ['etc/packagedir']
