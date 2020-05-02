@@ -16,16 +16,14 @@ from os.path import (
     abspath,
     dirname,
     join as join_path)
-from setuptools import (
-    setup,
-    find_packages)
+from setuptools import setup
 # You will need versioneer installed, or you can remove this if you don't plan to
 # use versioneer
 import versioneer
 
 
 def enumerate_static_content(basedir_list):
-    """Helper file to recursively enumerate static content to easily include data_files="""
+    """Recursively enumerate static content to easily include data_files"""
     file_list = []
     for basedir in basedir_list:
         for path, _, files in walk(basedir):
@@ -61,8 +59,8 @@ LICENSE = 'Proprietary'
 PACKAGE_DATA_DIRS = ['etc/packagedir']
 PYTHON_REQUIRES = '>=3'
 
-# Keep this in sync with venv/requirements-project.txt for a nice development experience
-REQUIRED = ['package1', 'package2', 'package3']
+# Set the install_requires value in setup.cfg, you don't need to change it here
+# REQUIRED = ['package1', 'package2', 'package3']
 SCRIPTS = glob('bin/*')
 
 DATA_FILE_LIST = enumerate_static_content(PACKAGE_DATA_DIRS)
@@ -79,15 +77,22 @@ DATA_FILE_LIST = enumerate_static_content(PACKAGE_DATA_DIRS)
 # the root of the project to bootstrap it, then make some changes to setup.cfg
 setup(
     cmdclass=versioneer.get_cmdclass(),
+    version=versioneer.get_version(),
     data_files=DATA_FILE_LIST,
-    include_package_data=True,
-    install_requires=REQUIRED,
-    license=LICENSE,
+    # The following can all be set in setup.cfg:
+    # include_package_data=True,
+    # install_requires=REQUIRED,
+    # license=LICENSE,
     name=NAME,
-    packages=find_packages(),
-    python_requires=PYTHON_REQUIRES,
-    scripts=SCRIPTS,
-    version=versioneer.get_version())
+    # Use setup.cfg:
+    # The line:
+    # packages = find:
+    # Is equivalent to the argument:
+    # packages=find_packages(),
+    # Use python_requires in setup.cfg instead
+    # python_requires=PYTHON_REQUIRES,
+    scripts=SCRIPTS
+)
 
 
 #
