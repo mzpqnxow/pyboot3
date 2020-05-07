@@ -220,8 +220,8 @@ missing-member-max-choices = 1
 
 [SPELLING]
 # Limits count of emitted suggestions for spelling mistakes.
-max-spelling-suggestions = 4
-spelling-dict = en
+# max-spelling-suggestions =
+spelling-dict = 
 spelling-ignore-words = 
 # A path to a file that contains private dictionary; one word per line.
 spelling-private-dict-file = 
