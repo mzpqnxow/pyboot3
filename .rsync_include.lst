@@ -9,6 +9,7 @@
 - *.pyc
 
 + COPYING
++ .pylintrc
 + .gitignore
 + Makefile
 + setup.py
