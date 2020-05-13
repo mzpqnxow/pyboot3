@@ -7,7 +7,7 @@
 # regardless of whether it has any of these dependencies installed in
 # your local directory or system-wide
 #
-# MacOS works, with some tweaks (use PYTHON=/path/to/system/python)
+# MacOS works, with some tweaks (use PYTHON3=/path/to/system/python)
 # Also, see the issue with the lack of a `realpath` command (seriously?)
 #
 #
@@ -471,6 +471,7 @@ clean: .FORCE
 	set -e
 	find $(PACKAGES_FULL_PATH) -name __pycache__ -o -name \*.pyc -exec rm -rf {} \; 2>/dev/null
 	find venv -type f -not -name .gitignore -not -name \*constraints\*.txt -not -name \*requirements\*.txt -exec rm -rf {} \;
+	find venv -maxdepth 1 -type d -not -name venv -exec rm -rf {} \;
 	rm -rf $(BUILD_FILES)
 
 compat: .FORCE
