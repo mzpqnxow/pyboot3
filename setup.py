@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-"""
-Example! modify for your package!
-
-This is the setup.py for company.group.pypackagedir
-
-Perform tasks
-
-Includes a package, an application and some data files
+"""Packaging with setuptools for use with pip
 
 https://packaging.python.org/tutorials/packaging-projects/#initial-files
+
 """
 from glob import glob
 from os import walk
@@ -32,22 +26,6 @@ def enumerate_static_content(basedir_list):
 
 
 CURDIR = abspath(dirname(__file__))
-
-# Assume your package directory is mylib
-# Your full package name will be company.group.pypackagedir
-# This is based on the below
-# This is done for purposes of keeping a package repository
-# namespace "clean" so as to avoid collisions with other users'
-# packages
-
-PACKAGE = 'packagedir'
-PROJECT_NAME = 'py{}'.format(PACKAGE)
-
-ORG = 'company'
-OU = 'group'
-NAMESPACE = [ORG, OU]
-NAME = '.'.join(NAMESPACE + [PROJECT_NAME])
-
 EXCLUDE_FILES = (
     'constraints.txt',
     'interactive',
@@ -55,16 +33,13 @@ EXCLUDE_FILES = (
     'pip.ini.socks',
     '.gitignore')
 LICENSE = 'Proprietary'
-# Include data files when installed
-PACKAGE_DATA_DIRS = ['etc/packagedir']
-PYTHON_REQUIRES = '>=3'
-
-# Set the install_requires value in setup.cfg, you don't need to change it here
-# REQUIRED = ['package1', 'package2', 'package3']
+# Include data files when installed. See setup.cfg for the choice of this directory name :>
+PACKAGE_DATA_DIRS = ['etc/oilfinder']
 SCRIPTS = glob('bin/*')
 
 DATA_FILE_LIST = enumerate_static_content(PACKAGE_DATA_DIRS)
 
+# If you use entry points, you can put them in setup.cfg
 # ENTRY_POINTS = {
 #     'console_scripts': [
 #         'cli_app = app:main',
@@ -79,51 +54,4 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     version=versioneer.get_version(),
     data_files=DATA_FILE_LIST,
-    # The following can all be set in setup.cfg:
-    # include_package_data=True,
-    # install_requires=REQUIRED,
-    # license=LICENSE,
-    name=NAME,
-    # Use setup.cfg:
-    # The line:
-    # packages = find:
-    # Is equivalent to the argument:
-    # packages=find_packages(),
-    # Use python_requires in setup.cfg instead
-    # python_requires=PYTHON_REQUIRES,
-    scripts=SCRIPTS
-)
-
-
-#
-# The above is a very barebones versioneer capable setuptools installer
-#
-# Here is an example for using
-# setuptools.setup() with a more exotic dependency
-#
-# setuptools.setup(
-#     ...
-#     required=['jq @ git+https://github.com/mzpqnxow/jq.py@setuptools-build#egg=jq']
-#     ...)
-#
-# Users have a way to force this behavior when installing as well by using constraints.txt
-#
-# If the above was written as:
-#
-# setuptools.setup(
-#     ...
-#     required=['jq']
-#     ...)
-#
-# ... then a constraints.txt file could be used as follows to force the jq package to use
-# the fork and specific branch with a line like this in the constraints file:
-#
-# ...
-# git+https://github.com/mzpqnxow/jq.py@setuptools-build#egg=jq
-# ...
-#
-# When pip goes to get the jq package, it consults the constraints before going
-# to any indexes that may be defined (e.g. PyPi) and honors this constraint. This
-# gives an end-user some control over packages that they don't maintain when there
-# are broken or "not-quite right" dependencies
-#
+    scripts=SCRIPTS)
