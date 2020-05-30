@@ -4,7 +4,11 @@ Use for developing and deploying Python3 projects on systems without relying on 
 
 ### Documentation
 
-More to come
+More to come, but here's some ..
+
+### Supported Platforms
+
+Linux on any CPU architecture should work, including strange ones like ppc64le. If using MacOS, you will need to make sure you have the `realpath` command. If you use `brew` this is part of the `coreutils` package. If you don't use `brew`, you can use one of a dozen hacks, none of which I feel like implementing, because it's goofy that MacOS doesn't have `realpath`. For more details on this, you can see [this](https://github.com/whatwg/html-build/issues/90) which discusses the problem and some solutions
 
 ### Previous Versions
 
