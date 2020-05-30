@@ -1,6 +1,6 @@
 ## pyboot3
 
-Use for developing and deploying Python3 projects on systems without relying on any OS packages or any other files in your local "profile". Completely repeatable and also contains **fully up to date** `virtualenv`, `setuptools`, `wheel` and `pip` which allows you to use new features of each. In some cases this is very important, e.g. support for pep517/518 and support for other types of "advanced" syntax/features in `requirements.txt`. Built to provide very easy to add usage of `versioneer` for managing releases as well as publishing to PyPi repositories via `twine`
+Use for developing and deploying Python3 projects on systems without relying on any OS packages or any other files in your local "profile". Completely repeatable and also contains **fully up to date** `virtualenv`, `setuptools`, `wheel` and `pip` which allows you to use new features of each. In some cases this is very important, e.g. support for pep517/518 and support for other types of "advanced" syntax/features in `requirements.txt`. Built to provide very easy to add usage of `versioneer` for managing releases as well as publishing to PyPi repositories via `twine`. Using pyboot3 as a quick development environment is as easy as cloning the repository, editing `venv/requirements-project.txt`, editing `etc/pip.ini` (if you have special requirements, like a private PyPi repository, or need to use an HTTP or SOCKS proxy) and then use `make dev && source venv/bin/activate`. Nothing needs to be installed on your OS exception core Python3, the minimum packages necessary to bootstrap a virtualenv (including virtualenv itself) are all included and in pure Python for architecture and OS portability
 
 ### Documentation
 
@@ -8,7 +8,7 @@ More to come, but here's some ..
 
 ### Supported Platforms
 
-Linux on any CPU architecture should work, including strange ones like ppc64le. If using MacOS, you will need to make sure you have the `realpath` command. If you use `brew` this is part of the `coreutils` package. If you don't use `brew`, you can use one of a dozen hacks, none of which I feel like implementing, because it's goofy that MacOS doesn't have `realpath`. For more details on this, you can see [this](https://github.com/whatwg/html-build/issues/90) which discusses the problem and some solutions
+Linux on any CPU architecture should work, including strange ones like ppc64le. If using MacOS, you will need to make sure you have the `realpath` command. If you use `brew` this is part of the `coreutils` package. If you don't use `brew`, you can use one of a dozen hacks, none of which I feel like implementing, because it's goofy that MacOS doesn't have `realpath`. For more details on this, you can see [this](https://github.com/whatwg/html-build/issues/90) which discusses the problem and some solutions. This almost certainly will not work on Windows, sorry. It's intended for use on Linux and commercial UNIX Operating Systems (e.g. Solaris, AIX, HP-UX, ...)
 
 ### Previous Versions
 
