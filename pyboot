@@ -208,7 +208,6 @@ def install(*args, **kwargs):
 
 def mkdir_p(dirname):
     """emulate mkdir -p behavior"""
-    input('mkdir: {}'.format(dirname))
     path_stack = ''
     for element in dirname.split(dirsep):
         if not isdir(dirname):
