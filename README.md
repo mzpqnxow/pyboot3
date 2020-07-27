@@ -6,6 +6,10 @@ Use for developing and deploying Python3 projects on systems without relying on 
 
 More to come, but here's some ..
 
+### WARNING: Python3.6
+
+For Python3.6 (and possibly others) you may run into an issue where distutils is not found. The `distutils` module is a core Python module, *not* a `pip` package. I'm not sure why some distributions do not include it with their Python3 installations. If you have this issue, you *will* need to install it via your OS package manager using, e.g. `sudo apt-get install python3-distutils`. I'm looking into ways to work around this so that no packages need to be installed, which is kind of the whole point of this project ...
+
 ### Supported Platforms
 
 Linux on any CPU architecture should work, including strange ones like ppc64le. If using MacOS, you will need to make sure you have the `realpath` command. If you use `brew` this is part of the `coreutils` package. If you don't use `brew`, you can use one of a dozen hacks, none of which I feel like implementing, because it's goofy that MacOS doesn't have `realpath`. For more details on this, you can see [this](https://github.com/whatwg/html-build/issues/90) which discusses the problem and some solutions. This almost certainly will not work on Windows, sorry. It's intended for use on Linux and commercial UNIX Operating Systems (e.g. Solaris, AIX, HP-UX, ...)
