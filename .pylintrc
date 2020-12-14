@@ -153,7 +153,7 @@ docstring-min-length = 3
 function-naming-style = snake_case
 
 # Good variable names which should always be accepted, separated by a comma.
-good-names = i,j,k,ex,Run,_,p
+good-names = i,j,k,ex,Run,_,p,df,pd,np
 # Include a hint for the correct naming format with invalid-name.
 include-naming-hint = yes
 inlinevar-naming-style = any
