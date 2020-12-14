@@ -1,10 +1,11 @@
-pylint  # Python linting
-yapf  # Formatting
-pep8  # Style
 flake8  # Style
-yamllint  # Linting for YaML files
+ipython  # Terminal/console Python interpreter with autocomplete and history
+pep8  # Style
+pycodestyle  # Formatting
 pydocstyle  # Documentation
 pylama  # Linter
-ipython  # Terminal/console Python interpreter with autocomplete and history
-twine  # Package publishing
+pylint  # Python linting
 pyt  # Security static analysis
+twine  # Package publishing
+yamllint  # Linting for YaML files
+yapf  # Formatting
