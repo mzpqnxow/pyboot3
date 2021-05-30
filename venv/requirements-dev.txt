@@ -9,3 +9,5 @@ pyt  # Security static analysis
 twine  # Package publishing
 yamllint  # Linting for YaML files
 yapf  # Formatting
+mypy  # PEP484/typing
+
