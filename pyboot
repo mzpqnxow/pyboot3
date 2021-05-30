@@ -115,7 +115,6 @@ def basic_env(cwd, easy_install_proxy=True):
     env['SHELL'] = pent.pw_shell
     env['LOGNAME'] = pent.pw_name
     env['PWD'] = getcwd()
-
     if easy_install_proxy is True:
         # For edgecases where pip invokes easy_install and proxy is only
         # set in pip.ini, not in the environment. wehn easy_setup runs,
@@ -131,7 +130,7 @@ def basic_env(cwd, easy_install_proxy=True):
             environ['http_proxy'] = proxy
             environ['https_proxy'] = proxy
 
-    for key in ('PATH', 'TERM', 'MAIL', 'http_proxy', 'https_proxy'):
+    for key in ('PATH', 'TERM', 'MAIL', 'http_proxy', 'https_proxy', 'LD_LIBRARY_PATH', 'CFLAGS', 'LDFLAGS'):
         if key in environ:
             env[key] = environ[key]
     return env
