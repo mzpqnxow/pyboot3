@@ -32,6 +32,7 @@
 
 !lib/python3
 !lib/python3.7
+!lib/python3.9
 
 !/lib/python3.5/site-packages/
 # The .egg-info here is extremely important
