@@ -29,11 +29,15 @@
 # Only cover 3.5 here because the rest are symlinks anyway
 !/lib/python3.5
 /lib/python3.5/*
+!/lib/python3.7
+/lib/python3.7/*
 
 !lib/python3
-!lib/python3.7
+!lib/python3.8
+!lib/python3.9
 
 !/lib/python3.5/site-packages/
+!/lib/python3.7/site-packages/
 # The .egg-info here is extremely important
 !/lib/*.egg-info
 !wheels

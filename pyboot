@@ -187,8 +187,7 @@ def invoke_virtualenv(virtualenv_exe, python, pipini, interactive, cwd):
     cp(interactive, INTERACTIVE)
 
     try:
-        # TODO(AG): Look into virtualenv options in latest version of virtualenv
-        subprocess.check_call([python, virtualenv_exe, '--clear-app-data', '-p', python, '.'],
+        subprocess.check_call([python, virtualenv_exe, '--reset-app-data', '-p', python, '.'],
                               env=basic_env(cwd))
     except OSError as err:
         if err.errno == ENOENT:

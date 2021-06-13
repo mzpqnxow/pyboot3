@@ -35,12 +35,16 @@
 + packages/lib/
 + packages/lib/python3
 + packages/lib/python3.5/
-+ packages/lib/python3.7
++ packages/lib/python3.7/
++ packages/lib/python3.8
++ packages/lib/python3.9
 
 + packages/lib/python3.5/site-packages
++ packages/lib/python3.7/site-packages
 
 
 + packages/lib/python3.5/site-packages/**
++ packages/lib/python3.7/site-packages/**
 
 + packages/bin/
 + packages/bin/easy_install
