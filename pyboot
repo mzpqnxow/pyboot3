@@ -390,7 +390,7 @@ def main():
     log('Found packages in {}, continuing ...'.format(package_dir))
     if islink('packages/lib/python3'):
         unlink('packages/lib/python3')
-    symlink(package_dir, 'packages/lib/python3', target_is_directory=True)
+    symlink(basename(package_dir), 'packages/lib/python3', target_is_directory=True)
     try:
         with pushd(venv_dest[0]):
             if args.destroy:
