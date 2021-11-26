@@ -4,6 +4,15 @@ Build a Python virtual environment without setuptools, virtualenv and
 other dependencies. Useful when building on "fresh" systems or those
 which for some reason do not have the required dependencies available
 
+This will do all sorts of useful things like make semi-broken Python
+distributions work, set the correct build-flags for machines with CPU
+architectures that require native code extensions to be built from
+source, handle quirky "features" (like the proxy settings in pip.ini
+not carrying over to easy_install) and so on. It's meant to "just work"
+even in very odd scenarios- typically big-iron/bare-metal hardware and
+commercial UNIXes like AIX, Solaris, HP-UX, etc. It also helps on Linux
+for POWER
+
 Support Python3 only
 No more Python2 support
 
@@ -16,69 +25,154 @@ Copyright (C) 2018
 Please see COPYING for terms
 """
 import json
+import multiprocessing
+import platform
+import pwd
 import re
-from configparser import (
-    ConfigParser,
-    NoOptionError,
-    NoSectionError
-)
+import shutil
+import subprocess
+import sys
+from configparser import (ConfigParser, NoOptionError, NoSectionError)
 from contextlib import contextmanager
 from datetime import datetime
-from errno import ENOENT, ENOTEMPTY
+from errno import (ENOENT, ENOTEMPTY)
 from os import (
     chdir,
     environ,
     getcwd,
     getuid,
-    mkdir,
-    unlink, symlink
+    unlink
 )
+import os
 from os.path import (
     abspath,
+    basename,
     dirname,
     exists,
-    isdir,
-    join as join_path,
-    realpath,
-    sep as dirsep, basename, islink
-)
-import pwd
-from shutil import copy as cp, rmtree, which
-import subprocess
-import sys
+    expanduser,
+    expandvars,
+    join as join_path, realpath, isdir)
 from time import sleep
 
-DEBUG = True
+
+DEBUG = os.getenv('PYBOOT_DEBUG', False)
 RUNNING_PYTHON_VERSION = sys.version_info[0]
 assert RUNNING_PYTHON_VERSION == 3
-# Always know where the script is running from
-CURDIR = dirname(abspath(__file__))
+CURDIR = CWD = dirname(abspath(__file__))
 # Basic required directories for a virtualenv
-VENV_DIRS = set(['lib', 'bin', 'include'])
+VENV_DIRS = {'lib', 'bin', 'include'}
 PIP_CONF = 'pip.conf'
-INTERACTIVE = '.interactive'
+BUILD_CONF = 'pyboot-{cpu_arch}-build.ini'
 # Taken from etc/
-INI_FILES = set([INTERACTIVE, PIP_CONF])
+INI_FILES = {'.interactive', PIP_CONF}
 # Put your dependencies in these files in your empty venv directory
 PKG_REQUIREMENT_FILEPATHS = {'requirements.txt'}
 PKG_CONSTRAINT_FILEPATHS = {'constraints.txt'}
-
 # Override this with `make dev PYTHON3=/path/to/python3.x
-DEFAULT_VENV_BASE_PYTHON = which('python3')
+DEFAULT_VENV_BASE_PYTHON = shutil.which('python3')
+CPU_COUNT = multiprocessing.cpu_count()
 PYVERSION = 3
 
 
 def log(msg):
-    sys.stderr.write('{}\n'.format(msg))
+    sys.stderr.write(msg + '\n')
+
+
+def debug(msg, obj=None):
+    """Debug output"""
+    if DEBUG is not False:
+        sys.stderr.write('[PYBOOT DEBUG] %s' % msg)
+        if obj is not None:
+            lines = json.dumps(obj, indent=2).splitlines()
+            for line in lines:
+                sys.stderr.write('[PYBOOT DEBUG] %s' % line)
 
 
 def get_pyversion_from_name(app):
+    """Added for edge cases"""
     version_pattern = '^(?P<full>python(?P<short>\d(?:(?:\.\d)*)))'
-    app_path = which(app)
+    app_path = shutil.which(app)
     app_realpath = realpath(app_path)
     app_realname = basename(app_realpath)
     m = re.match(version_pattern, app_realname)
     return list(m.groups())
+
+
+def build_flags():
+    """Load pyboot-<cpu_arch>-build.ini if it exists to set environment vars
+
+    This feature was added as a hack to set environment variables for building
+    native-code packages. The most ubiquitous is OpenSSL, needed for the cryptography
+    package. Modern versions require OpenSSL 1.1.1 and our ppc64le system has 1.0.1
+
+    With this, including pyboot-ppc64le-build.ini in the repository will ensure that
+    the flags get set
+
+    If there is no pyboot-<cpu_arch>-build.ini present in the root of the repo, this
+    function will be a no-op
+    """
+    build_env = dict()
+    allowed_build_vars = ('CFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LD_LIBRARY_PATH')
+    cpu_arch = platform.processor()
+    if not cpu_arch:
+        cpu_arch = platform.machine()
+    build_conf = join_path('..', BUILD_CONF.format(cpu_arch=cpu_arch))
+    if not cpu_arch:
+        raise RuntimeError('Unable to determine CPU architecture!')
+
+    if not exists(build_conf):
+        return build_env
+
+    config = ConfigParser()
+    config.read(build_conf)
+
+    try:
+        section = config['environment']
+    except NoSectionError:
+        return build_env
+
+    for k, v in section.items():
+        k = k.upper()
+        if k not in allowed_build_vars:
+            continue
+        build_env[k.upper()] = v
+
+    return build_env
+
+
+def get_pip_ini_value(section, key, expand=False):
+    config = ConfigParser()
+    config.read(PIP_CONF)
+    try:
+        value = config.get(section, key)
+        if expand is True:
+            return realpath(expanduser(expandvars(value)))
+        return value
+    except (NoSectionError, NoOptionError):
+        return None
+
+
+def prep_pip_wheelhouse(create=True):
+    """Ensure the pip wheelhouse directory exists; create it if necessary"""
+    wheelhouse_dir = get_pip_ini_value('wheel', 'wheel-dir', expand=True)
+    if wheelhouse_dir is None:
+        return None
+    if isdir(wheelhouse_dir):
+        # Already exists, nothing to do
+        return wheelhouse_dir
+    if create is False:
+        return None
+    print('NOTE: pyboot3 auto-creating wheelhouse directory %s' % wheelhouse_dir)
+    mkdir_p(wheelhouse_dir)
+    return wheelhouse_dir
+
+
+def check_and_prep_pip_conf():
+    pip_wheelhouse = prep_pip_wheelhouse(create=True)
+    find_links_dir = get_pip_ini_value('global', 'find-links', expand=True)
+    if pip_wheelhouse != find_links_dir:
+        raise RuntimeError('The global.find-links and wheel.wheel-dir values should be the same!')
+    return True
 
 
 def pip_proxy():
@@ -104,20 +198,38 @@ def pip_proxy():
 
     This approach fixes that. Hopefully it is now no longer an issue
     """
-    config = ConfigParser()
-    config.read(PIP_CONF)
+    return get_pip_ini_value('global', 'proxy')
+
+
+def find_libpython(python_exe_path):
+    """For machines with multiple versions of Python, if LD_LIBRARY_PATH isn't set correctly, we need this
+
+    Example: Our prod server has /opt/Python-3.8 but does not have a proper entry in /etc/ld.so.d/
+    To fix this: We add /opt/Python-3.8/lib to LD_LIBRARY_PATH
+
+    The correct fix is on the system owner or the user to set LD_LIBRARY_PATH themselves, though
+    """
     try:
-        proxy = config.get('global', 'proxy')
-    except (NoSectionError, NoOptionError):
-        proxy = None
-    return proxy
+        python_root_path = dirname(dirname(realpath(python_exe_path)))
+        return join_path(python_root_path, 'lib')
+    except:  # noqa
+        log('Unable to find libpython, hopefully it is already in your loader search path')
+        return None
 
 
+def update_ld_library_path(env):
+    ld_library_path = env.get('LD_LIBRARY_PATH', '')
+    libpython_path = find_libpython(DEFAULT_VENV_BASE_PYTHON)
+    if libpython_path is not None:
+        ':'.join((ld_library_path, libpython_path))
+    env['LD_LIBRARY_PATH'] = ld_library_path
+    return env
 
 
-def basic_env(cwd, easy_install_proxy=True):
+def basic_env(cwd, parallel=True, easy_install_proxy=True):
     """Provide a clean environment with bare essentials"""
     global PYVERSION
+    build_flags()
     pent = pwd.getpwuid(getuid())
     env = dict()
     env['PYTHONPATH'] = '{}/packages/lib/python{}/site-packages/'.format(
@@ -126,24 +238,43 @@ def basic_env(cwd, easy_install_proxy=True):
     env['SHELL'] = pent.pw_shell
     env['LOGNAME'] = pent.pw_name
     env['PWD'] = getcwd()
+    # One can hope that these environment variables make it to a compiled
+    # native code build that uses GNU make. Pretty unlikely to work, and
+    # even less likely to occur, but doesn't hurt. Maybe cython or pandas
+    # or some such thing can benefit.. well, not pandas/cython, yet,
+    # but maybe some day. Pandas currently takes 7 minutes to build from
+    # source on "unsupported" platforms, but can not at this time benefit
+    # from parallelism
+    #
+    # https://github.com/pandas-dev/pandas/issues/24344
+    #
+    if parallel is True:
+        parallelism_count = '{}'.format(CPU_COUNT if CPU_COUNT == 1 else (CPU_COUNT - 1))
+        env['MAKEFLAGS'] = '-j{}'.format(parallelism_count)
+        env['CONCURRENCY_LEVEL'] = parallelism_count
+
+    # If pip.ini/pip.conf has a wheelhouse/wheel cache path set, make
+    # sure it exists; if it doesn't create it
+    check_and_prep_pip_conf()
+
     if easy_install_proxy is True:
-        # For edgecases where pip invokes easy_install and proxy is only
-        # set in pip.ini, not in the environment. wehn easy_setup runs,
-        # it will *not* use the proxy settings from pip.ini, so we set
-        # it explicitly in the environment or things will break part
-        # way through, which is a mess to troubleshoot
+        # For edge cases where pip invokes easy_install and proxy is only
+        # set in pip.ini, not in the environment
         proxy = pip_proxy()
         #  NOTE(AG): To be clear: This overrides the environment with what
         #            is set in pip config. This is/was required for easy_setup
         #            which does not honor pip config but still may need to us
         #            HTTP to access the Internet or somewhere else via proxy
-        if proxy:
+        if proxy:  # Note: this overrides the environment with pip config
             environ['http_proxy'] = proxy
             environ['https_proxy'] = proxy
 
-    for key in ('PATH', 'TERM', 'MAIL', 'http_proxy', 'https_proxy', 'LD_LIBRARY_PATH', 'CFLAGS', 'LDFLAGS'):
+    for key in ('PATH', 'TERM', 'MAIL', 'http_proxy', 'https_proxy', 'CFLAGS', 'LD_LIBRARY_PATH', 'LDFLAGS', 'CPPFLAGS'):
         if key in environ:
             env[key] = environ[key]
+
+    env = update_ld_library_path(env)
+
     return env
 
 
@@ -164,7 +295,7 @@ def pushd(directory):
 
 def destroy(explain, vdirs, cfg):
     """ Destroy a previously created virtual environment """
-    log('%s: destroying %s' % (explain, ('/ '.join(vdirs) + dirsep)))
+    log('%s: destroying %s' % (explain, ('/ '.join(vdirs) + os.path.sep)))
     # rmtree can fail if you work SSHFS/NFS/CIFS/SMB due to locking issues
     retry = 10  # Give it 10 tries, then quit
     done = False
@@ -172,7 +303,7 @@ def destroy(explain, vdirs, cfg):
         retry, done = (retry - 1, True)
         for directory in vdirs:
             try:
-                rmtree(directory)
+                shutil.rmtree(directory)
             except OSError as err:
                 if err.errno == ENOENT:
                     pass  # directory already gone
@@ -192,22 +323,16 @@ def destroy(explain, vdirs, cfg):
             pass
 
 
-def invoke_virtualenv(virtualenv_exe, python, pipini, interactive, cwd):
+def invoke_virtualenv(virtualenv_exe, python, pipini, interactive, cwd, new_venv=True):
     """ Run virtualenv with the arguments and environment set """
-    cp(pipini, PIP_CONF)
-    cp(interactive, INTERACTIVE)
+    shutil.copy(pipini, 'pip.conf')
+    shutil.copy(interactive, '.interactive')
 
     try:
-        # TODO(AG): Look into virtualenv options in latest version of virtualenv
-        # subprocess.check_call([python, virtualenv_exe, '--clear-app-data', '-p', python, '.'],
-        # Newest virtualenv uses --reset-app-data, --clear-app-data is removed
-        env = basic_env(cwd)
-        if DEBUG is True:
-            log('Environment for Python {}'.format(python))
-            log(json.dumps(env, indent=2))
-        # --clear-app-data for older versions?
-        subprocess.check_call([python, virtualenv_exe, '--reset-app-data', '-p', python, '.'],
-                              env=basic_env(cwd))
+        clear_app_data = '--reset-app-data' if new_venv is True else '--clear-app-data'
+        # subprocess.check_call([python, virtualenv_exe, clear_app_data, '-p', python, '.'], env=basic_env(cwd))
+        # This may be more reliable in some cases ...
+        subprocess.check_call([python, '-mvirtualenv', clear_app_data, '-p', python, '.'], env=basic_env(cwd))
     except OSError as err:
         if err.errno == ENOENT:
             raise RuntimeError('Python %s does not exist !!' % python)
@@ -223,67 +348,72 @@ def install(*args, **kwargs):
     pip(*args, **kwargs)
 
 
-def mkdir_p(dirname):
-    """emulate mkdir -p behavior"""
-    path_stack = ''
-    for element in dirname.split(dirsep):
-        if not isdir(dirname):
-            if not element:
-                continue
-            path_stack = join_path(dirsep, path_stack, element)
-            if not isdir(path_stack):
-                mkdir(path_stack)
+def mkdir_p(*args) -> None:
+    """emulate mkdir -p behavior, treat args like os.path.join"""
+    return os.makedirs(expanduser(expandvars(join_path(*args))), exist_ok=True)
 
 
-def pip(pip_exe, ini, requirements, constraints, cwd, action='install', prerelease=False, easy_install_proxy=True):
-    """Set 'PIP_CONFIG_FILE' environment variable to ini, then call exe as pip using requirements file
+def find_first_file(file_list, default_file='/dev/null', file_fn=exists):
+    for file in file_list:
+        if file_fn(file):
+            return file
+    else:
+        return default_file
 
-    This is where things get build
+
+def merge_build_ini_environment(env):
+    build_env = build_flags()
+
+    for k, v in build_env.items():
+        if not k.endswith('PATH'):
+            env[k] = v
+            continue
+        # For things like LD_LIBRARY_PATH, PATH, etc. we don't want to completely
+        # overwrite the path value, we want to add to it, hence this bit of logic
+        current_env_value = env.get(k, '')
+        env[k] = ':'.join((current_env_value, v))
+        env[k] = ':'.join(filter(None, env[k].split(':')))
+
+    return env
+
+
+def pip(pip_exe, ini, require, constrain, cwd, prerelease=False, action='install', parallel=True, easy_install_proxy=True):
+    """
+        Set 'PIP_CONFIG_FILE' environment variable to ini, then call
+        exe as pip using the require file.
     """
     environ['PIP_CONFIG_FILE'] = ini
-    reqs_file = csts_file = None
 
-    for reqs_file in requirements:
-        if exists(reqs_file):
-            break
-    else:
-        log('WARNING: none of {} exist, skipping pip!'.format(str(requirements)))
+    req = find_first_file(require, default_file=None)
+    if req is None:
+        log('WARNING: none of {} exist, skipping pip!'.format(', '.join(require)))
         return
 
-    for csts_file in constraints:
-        if exists(csts_file):
-            break
-    else:
-        log('WARNING: none of {} exist, using /dev/null for constraints!'.format(str(constraints)))
-        csts_file = '/dev/null'
+    cst = find_first_file(constrain)
 
-    # TODO: Look into pip install/freeze parameters in latest version of pip
-    install_arguments = [
-        pip_exe, 'install',
-        '--compile',
-        '--progress-bar', 'off',
-        '-I',
-        '-r', reqs_file,
-        '-c', csts_file]
-    if prerelease is True:
-        install_arguments.append('--pre')
-
-    # Install a virtualenv or Freeze an already built virtualenv
     pip_arguments = {
-        'install': install_arguments,
-        'freeze': [
-            pip_exe, 'freeze',
-            '--no-cache-dir',
-            '-l',
-            '-r', reqs_file]}
-
+        'install': [
+            # Perform an install; these flags have to be updated occasionally as pip is updated
+            pip_exe, 'install', '--compile', '--progress-bar', 'off', '--pre', '-I', '-r', req, '-c', cst
+        ],
+        'freeze': [  # Freeze versions in a built venv
+            pip_exe, 'freeze', '--no-cache-dir', '-l', '-r', req
+        ]  # Preserves comments and order
+    }
     assert action in pip_arguments
 
     if action == 'install':
+        env = basic_env(cwd, parallel=parallel, easy_install_proxy=easy_install_proxy)
+
+        # Get special flags from the architecture specific .ini file in the root
+        # This is pyboot-$(uname -m)-build.ini, if it exists
+        env = merge_build_ini_environment(env)
+
         try:
-            subprocess.check_call(
-                pip_arguments[action],
-                env=basic_env(cwd, easy_install_proxy=easy_install_proxy))
+            argp = pip_arguments[action]
+            if prerelease is True:
+                argp.append('--pre')
+            subprocess.check_call(argp, env=env)
         except Exception as err:
             log('error invoking pip install {}'.format(err))
             raise
@@ -291,14 +421,16 @@ def pip(pip_exe, ini, requirements, constraints, cwd, action='install', prerelea
         try:
             byte_output = subprocess.check_output(
                 pip_arguments[action], env=basic_env(cwd))
-            frozen_fullpath = frozen_requirements_fullpath(reqs_file)
-            with open(frozen_fullpath, 'wb') as frozenfd:
-                frozenfd.write(byte_output)
-                log('Writing frozen requirements file to {}...'.format(frozen_fullpath))
+            frozen_fullpath = frozen_requirements_fullpath(req)
+            with open(frozen_fullpath, 'wb') as ffd:
+                ffd.write(byte_output)
+                log('Writing stable, frozen requirements file to {}...'. format(frozen_fullpath))
                 log('# ---- END ---- #')
         except subprocess.CalledProcessError as err:
             log('error invoking pip freeze {}'.format(err))
             raise
+    else:
+        raise RuntimeError('Invalid action')
 
 
 def frozen_requirements_fullpath(req):
@@ -306,7 +438,7 @@ def frozen_requirements_fullpath(req):
 
     This function should be changed or should just go away
     """
-    base_requirements_path = (join_path(dirname(realpath(req))))
+    base_requirements_path = join_path(dirname(realpath(req)))
     mkdir_p(base_requirements_path)
     today_yyyymmdd = datetime.today().strftime('%Y-%m-%d.%S')
     frozen_filename = 'frozen-requirements-{}'.format(
@@ -316,14 +448,20 @@ def frozen_requirements_fullpath(req):
 
 
 def main():
-    """Entry-point, derp"""
+    """Let it begin"""
     # This is a relic from when we support 2.6, to bootstrap from scratch on
-    # very old (generally commercial) UNIX-based systems. Good memories, right
-    # Dave? :>
+    # very old (generally commercial) UNIX-based systems. Good memories...
     from optparse import OptionParser
     global DEFAULT_VENV_BASE_PYTHON, PYVERSION
 
     optparser = OptionParser('usage: %prog [options] <destination>')
+
+    optparser.add_option(
+        '--disable-parallel',
+        action='store_false',
+        default=True,
+        dest='parallel',
+        help='Attempt parallel builds for native packages')
     optparser.add_option(
         '-p',
         '--python',
@@ -331,14 +469,14 @@ def main():
         type='string',
         dest='python',
         default=DEFAULT_VENV_BASE_PYTHON,
-        help='Specify the full path to python [default={}]'.format(DEFAULT_VENV_BASE_PYTHON))
+        help='Specify the full path to python')
     optparser.add_option(
         '-e',
         '--disable-easy-install-proxy',
         action='store_false',
         dest='easy_install_proxy',
         default=True,
-        help='Set http(s)_proxy in environment for easy_install to inherit [default=True]')
+        help='Set http(s)_proxy in environment for easy_install to inherit')
     optparser.add_option(
         '--freeze',
         action='store_true',
@@ -359,7 +497,7 @@ def main():
         action='store',
         dest='inifile',
         default='pip.ini',
-        help='The pip.ini file to use from the etc/ directory [default=pip.ini]')
+        help='The pip.ini file to use from the etc/ directory')
     optparser.add_option(
         '-P',
         '--prerelease',
@@ -375,22 +513,10 @@ def main():
 
     cwd = dirname(abspath(__file__))
 
-    ini_load_path = join_path(cwd, 'etc', args.inifile)
+    ini_load_path = join_path(cwd, 'etc/%s' % args.inifile)
     virtualenv_run_path = join_path(cwd, 'packages/bin/virtualenv')
     interactive_load_path = join_path(cwd, 'etc/interactive')
 
-    long_version, short_version = get_pyversion_from_name(args.python)
-    log('Target Python: {}'.format(long_version))
-    log('Target Version: {}'.format(short_version))
-
-    package_dir = join_path('packages/lib', long_version)
-    log('Checking {} for packages ...'.format(package_dir))
-    if not exists(package_dir):
-        raise NotImplementedError('No packages available for {}'.format(long_version))
-    log('Found packages in {}, continuing ...'.format(package_dir))
-    if islink('packages/lib/python3'):
-        unlink('packages/lib/python3')
-    symlink(basename(package_dir), 'packages/lib/python3', target_is_directory=True)
     try:
         with pushd(venv_dest[0]):
             if args.destroy:
@@ -424,6 +550,7 @@ def main():
                 PKG_CONSTRAINT_FILEPATHS,
                 cwd,
                 prerelease=args.prerelease,
+                parallel=args.parallel,
                 easy_install_proxy=args.easy_install_proxy,
                 action='install')
 
