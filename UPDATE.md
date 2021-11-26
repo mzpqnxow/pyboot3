@@ -3,5 +3,5 @@
 Roughly:
 
 ```
-python3.9 -mpip install -I --root $(realpath macroot) --upgrade --no-binary :all: -r pyboot3-developer-requirements.txt
+python3.9 -mpip install --system -I --root $(realpath macroot) --upgrade --no-binary :all: -r pyboot3-developer-requirements.txt --no-warn-script-location
 ```
