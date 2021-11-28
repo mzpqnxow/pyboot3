@@ -10,6 +10,8 @@
 #
 !/.gitignore
 __pycache__/
+*.good
+*.bad
 *.py[cod]
 *$py.class
 *.so
