@@ -73,7 +73,7 @@ def log(msg):
 
 
 def get_pyversion_from_name(app):
-    version_pattern = '^(?P<full>python(?P<short>\d(?:(?:\.\d)*)))'
+    version_pattern = '^(?P<full>python(?P<short>\d(?:(?:\.\d+)*)))'
     app_path = which(app)
     app_realpath = realpath(app_path)
     app_realname = basename(app_realpath)
